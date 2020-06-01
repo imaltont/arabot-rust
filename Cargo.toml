@@ -8,9 +8,10 @@ edition = "2018"
 
 [dependencies]
 serde_json = "1.0"
-twitchchat = "0.10"
-tokio = { version = "0.2", features = ["full", "macros"] }
+irc = "0.14.0"
 random = "0.12.2"
+futures = "0.3.5"
+tokio = "0.2.21"
 
 [build-dependencies.config_struct]
 version = "~0.4.0"
