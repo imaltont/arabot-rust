@@ -1,0 +1,8 @@
+/target
+twitch_settings.json
+
+*~
+*.swp
+*.swo
+
+config.rs
