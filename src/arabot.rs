@@ -5,11 +5,13 @@ mod message;
 use std::sync::mpsc::{channel};
 use std::sync::Arc;
 use std::thread;
+use regex::Regex;
 use irc::client::prelude::*;
 use futures::prelude::*;
 use irc::client;
 use irc::error::Error;
 use irc::proto::command::{CapSubCommand,Command};
+
 
 pub struct Arabot {
     pub name: String,
@@ -51,16 +53,24 @@ impl Arabot{
         let (cs, cr) = channel::<ChatMessage>(); //command send and receive 
         let (rs, rr) = channel::<(String, String)>(); //respond send and receive 
 
+        let thread_reg = Regex::new(r"badges=[a-zA-Z0-9/,_-]*;").unwrap();
         let message_thread = thread::spawn(move || { 
             loop {
                 let msg = mr.recv().unwrap();
-                let el: Elevation = match &msg{
-                    //get some regex going here to recognize badges
-                    default => Elevation::Viewer,
-                };
                 if let Command::PRIVMSG(channel, message) = &msg.command{
 //                  chat_message.text = String::from(msg);
+                    let match_string = msg.to_string();
+                    let badge_match = thread_reg.find(&match_string).unwrap().as_str();
+
+                    let el: Elevation = if badge_match.contains("broadcaster") {
+                        Elevation::Broadcaster
+                    } else if badge_match.contains("moderator"){
+                        Elevation::Moderator
+                    } else {
+                        Elevation::Viewer
+                    };
                     let chat_message = ChatMessage{user: String::from(msg.source_nickname().unwrap_or("No username found")), roles: el, text: String::from(message), channel: String::from(channel)};
+                    println!("{}: {}", chat_message.user, chat_message.text);
                     cs.send(chat_message).unwrap();
                 }
             }
@@ -91,8 +101,9 @@ impl Arabot{
 
         });
 
+        println!("Connected to {}", self.twitch_channel);
+
         while let Some(message) = stream.next().await.transpose()? {
-            println!("{}", message.source_nickname().unwrap_or("test"));
             ms.send(message.clone()).unwrap();
         }
         let _ = message_thread.join();
