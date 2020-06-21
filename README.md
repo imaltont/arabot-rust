@@ -1,7 +1,7 @@
 # arabot-rust
 Recreation of arabot in rust
 
-To be able to compile, you need to add the file twitch\_settings.json with the following content:
+To compile, you need to add the file twitch\_settings.json to the root directory with the following content:
 ```
 {
   "name": "INSERT_TWITCH_NAME",
