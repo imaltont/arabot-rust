@@ -1,11 +1,10 @@
-use std::{env, error};
+use std::{env, error, thread, time};
 use message::{ChatMessage,Reply,ChatCommand, Elevation};
 mod message;
 
 use std::sync::mpsc::{channel};
 use std::sync::Arc;
-use std::thread;
-use regex::Regex;
+use regex::{Regex, RegexSet};
 use irc::client::prelude::*;
 use futures::prelude::*;
 use irc::client;
@@ -19,11 +18,13 @@ pub struct Arabot {
     pub twitch_channel: String,
     pub incoming_queue: Vec<ChatMessage>,
     pub answer_queue: Vec<Reply>,
-    pub commands: Vec<ChatCommand>
+    pub commands: Vec<ChatCommand>,
+    command_symbol: String,
+    message_wait: u64
 }
 
 impl Arabot{
-    pub fn new(name: String, oauth: String, twitch_channel: String) -> Arabot {
+    pub fn new(name: String, oauth: String, twitch_channel: String, command_symbol: String, message_wait: u64) -> Arabot {
 
         let mut m: Vec<ChatMessage> = Vec::new();
         let mut a: Vec<Reply> = Vec::new();
@@ -31,7 +32,7 @@ impl Arabot{
         let tc = String::from(&twitch_channel);
         let mut hash = String::from("#");
         hash.push_str(&tc);
-        Arabot{name: name, oauth: oauth, twitch_channel: String::from(hash), incoming_queue: m, answer_queue: a, commands: c}
+        Arabot{name: name, oauth: oauth, twitch_channel: String::from(hash), incoming_queue: m, answer_queue: a, commands: c, command_symbol: String::from(command_symbol), message_wait: message_wait}
     }
     pub async fn start_bot(&self)-> Result<(), Error>{
         let irc_client_config = client::data::config::Config {
@@ -76,7 +77,10 @@ impl Arabot{
             }
         });
 
+        let arabot = Arc::new(self);
+        let cloned_arabot = Arc::clone(&arabot);
         let command_thread = thread::spawn(move || {
+            let command_reg = generate_regex(&cloned_arabot.commands, &cloned_arabot.command_symbol);
             loop {
                 let cmd = cr.recv().unwrap();
                 //TODO insert proper logic for handling more than just !hello
@@ -92,11 +96,12 @@ impl Arabot{
 
         let client = Arc::new(client);
         let cloned_client = Arc::clone(&client);
+        let tmp_wait = self.message_wait;
         let answer_thread = thread::spawn(move || {
-            //TODO add sleep so not banned for spam
             loop{
                 let (response, channel) = rr.recv().unwrap();
                 cloned_client.send_privmsg(&channel, &response).unwrap();
+                thread::sleep(time::Duration::from_millis(tmp_wait));
             }
 
         });
@@ -111,4 +116,13 @@ impl Arabot{
         let _ = answer_thread.join();
         Ok(())
     }
+
+}
+
+fn generate_regex(commands: &Vec<ChatCommand>, command_symbol: &String) -> RegexSet {
+    let mut command_reg: Vec<String>  = Vec::new();
+    for i in 0..commands.len() {
+        command_reg.push(format!(r"{}{}", command_symbol, commands[i].command))
+    }
+    regex::RegexSet::new(command_reg).unwrap()
 }
