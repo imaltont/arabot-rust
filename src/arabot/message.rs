@@ -10,6 +10,7 @@ pub struct Reply{
     pub text: String
 }
 
+#[derive(Copy, Clone)]
 pub enum Elevation{
     Broadcaster,
     Moderator,
