@@ -4,6 +4,7 @@ mod message;
 
 use std::sync::mpsc::{channel};
 use std::sync::Arc;
+use std::collections::HashMap;
 use regex::{Regex, RegexSet};
 use irc::client::prelude::*;
 use futures::prelude::*;
@@ -18,7 +19,7 @@ pub struct Arabot {
     pub twitch_channel: String,
     pub incoming_queue: Vec<ChatMessage>,
     pub answer_queue: Vec<Reply>,
-    pub commands: Vec<ChatCommand>,
+    pub commands: HashMap<String, ChatCommand>,
     command_symbol: String,
     message_wait: u64
 }
@@ -28,25 +29,28 @@ impl Arabot{
 
         let mut m: Vec<ChatMessage> = Vec::new();
         let mut a: Vec<Reply> = Vec::new();
-        let mut c: Vec<ChatCommand> = Vec::new();
+        let mut c = HashMap::new();
         let tc = String::from(&twitch_channel);
         let mut hash = String::from("#");
         hash.push_str(&tc);
         Arabot{name: name, oauth: oauth, twitch_channel: String::from(hash), incoming_queue: m, answer_queue: a, commands: c, command_symbol: String::from(command_symbol), message_wait: message_wait}
     }
-    pub fn clone (old_bot: &Arabot) -> Arabot {
+    pub fn from (old_bot: &Arabot) -> Arabot {
         let name = String::from(&old_bot.name);
         let oauth = String::from(&old_bot.oauth);
         let command_symbol = String::from(&old_bot.command_symbol);
         let message_wait = old_bot.message_wait;
         let mut m: Vec<ChatMessage> = Vec::new();
         let mut a: Vec<Reply> = Vec::new();
-        let mut c: Vec<ChatCommand> = Vec::new();
-        for i in 0..old_bot.commands.len() {
-            c.push(ChatCommand{command: String::from(&old_bot.commands[i].command), elevation: old_bot.commands[i].elevation, response: old_bot.commands[i].response, help: String::from(&old_bot.commands[i].help), repeat_interval: old_bot.commands[i].repeat_interval});
+        let mut c = HashMap::new();
+        for i in old_bot.commands.keys() {
+            c.insert(format!("{}{}", old_bot.command_symbol, old_bot.commands[i].command),ChatCommand{command: String::from(&old_bot.commands[i].command), elevation: old_bot.commands[i].elevation, response: old_bot.commands[i].response, help: String::from(&old_bot.commands[i].help), repeat_interval: old_bot.commands[i].repeat_interval});
         }
         let tc = String::from(&old_bot.twitch_channel);
         Arabot{name: name, oauth: oauth, twitch_channel: tc, incoming_queue: m, answer_queue: a, commands: c, command_symbol: String::from(command_symbol), message_wait: message_wait}
+    }
+    pub fn add_command(&mut self, new_command: ChatCommand){
+        self.commands.insert(format!("{}{}", self.command_symbol, new_command.command), new_command);
     }
     pub async fn start_bot(&self)-> Result<(), Error>{
         let irc_client_config = client::data::config::Config {
@@ -91,7 +95,7 @@ impl Arabot{
             }
         });
 
-        let arabot = Arc::new(Arabot::clone(&self));
+        let arabot = Arc::new(Arabot::from(&self));
         let cloned_arabot = Arc::clone(&arabot);
         let command_thread = thread::spawn(move || {
             let mut command_reg = generate_regex(&cloned_arabot.commands, &cloned_arabot.command_symbol);
@@ -100,8 +104,7 @@ impl Arabot{
                 //TODO insert proper logic for handling more than just !hello
                 if command_reg.is_match(&cmd.text){
                     let command = command_reg.find(&cmd.text).unwrap().as_str();
-                    println!("{}", command);
-                    match command{
+                    match command{ //special commands are placed in their own patterns in the match, while "regular" commands all go into default.
                         "!hello" => rs.send((format!("Hello, {}", cmd.user), cmd.channel)).unwrap(),
                         _default => rs.send((format!("Error occured: No command found"), cmd.channel)).unwrap(),
                     }
@@ -141,9 +144,9 @@ impl Arabot{
 
 }
 
-fn generate_regex(commands: &Vec<ChatCommand>, command_symbol: &String) -> Regex{
+fn generate_regex(commands: &HashMap<String, ChatCommand>, command_symbol: &String) -> Regex{
     let mut command_reg: String  = String::from(format!(r"^"));
-    for i in 0..commands.len() {
+    for i in commands.keys() {
 //        command_reg.push(format!(r"{}{}", command_symbol, commands[i].command))
         command_reg.push_str(format!(r"{}{}|", command_symbol, commands[i].command).as_str());
     }
