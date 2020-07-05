@@ -12,48 +12,53 @@ use irc::client;
 use irc::error::Error;
 use irc::proto::command::{CapSubCommand,Command};
 
+pub struct CommandHash<'a> {
+    pub commands: HashMap<&'a String, &'a ChatCommand>
+}
 
-pub struct Arabot<F: FnMut(String, String) -> String + 'static> {
+impl<'a> CommandHash<'a>{
+    pub fn new ()->CommandHash<'a>{
+        let mut commands = HashMap::<&'a String, &'a ChatCommand>::new();
+        CommandHash{commands: commands}
+    }
+    pub fn add_command(&mut self, new_command: ChatCommand, command_symbol: String){
+        //self.commands.get_mut().unwrap().insert(format!("{}{}", command_symbol, new_command.command), new_command);
+        self.commands.insert(format!("{}{}", command_symbol, new_command.command), &new_command);
+    }
+}
+
+pub struct Arabot {
     pub name: String,
     oauth: String,
     pub twitch_channel: String,
     pub incoming_queue: Vec<ChatMessage>,
     pub answer_queue: Vec<Reply>,
-    pub commands: Mutex<HashMap<String, ChatCommand<F>>>,
+    //pub commands: Mutex<HashMap<String, ChatCommand<F>>>,
     command_symbol: String,
     message_wait: u64
 }
 
-impl<F: FnMut(String, String) -> String + 'static> Arabot<F>{
-    pub fn new(name: String, oauth: String, twitch_channel: String, command_symbol: String, message_wait: u64) -> Arabot<F> {
+impl Arabot{
+    pub fn new(name: String, oauth: String, twitch_channel: String, command_symbol: String, message_wait: u64) -> Arabot {
 
         let mut m: Vec<ChatMessage> = Vec::new();
         let mut a: Vec<Reply> = Vec::new();
-        let mut c: Mutex<HashMap<String, ChatCommand<F>>> = Mutex::new(HashMap::new());
         let tc = String::from(&twitch_channel);
         let mut hash = String::from("#");
         hash.push_str(&tc);
-        Arabot{name: name, oauth: oauth, twitch_channel: String::from(hash), incoming_queue: m, answer_queue: a, commands: c, command_symbol: String::from(command_symbol), message_wait: message_wait}
+        Arabot{name: name, oauth: oauth, twitch_channel: String::from(hash), incoming_queue: m, answer_queue: a, command_symbol: String::from(command_symbol), message_wait: message_wait}
     }
-    pub fn from (old_bot: &Arabot<F>) -> Arabot<F> {
+    pub fn from (old_bot: &Arabot) -> Arabot {
         let name = String::from(&old_bot.name);
         let oauth = String::from(&old_bot.oauth);
         let command_symbol = String::from(&old_bot.command_symbol);
         let message_wait = old_bot.message_wait;
         let mut m: Vec<ChatMessage> = Vec::new();
         let mut a: Vec<Reply> = Vec::new();
-        let mut c: Mutex<HashMap<String, ChatCommand<F>>> = Mutex::new(HashMap::new());
-        let mut tmp_lock = old_bot.commands.lock().unwrap();
-        for i in tmp_lock.keys() {
-            c.get_mut().unwrap().insert(format!("{}{}", old_bot.command_symbol, tmp_lock[i].command),ChatCommand{command: String::from(&tmp_lock[i].command), elevation: tmp_lock[i].elevation, response: Arc::clone(&tmp_lock[i].response), help: String::from(&tmp_lock[i].help), repeat_interval: tmp_lock[i].repeat_interval});
-        }
         let tc = String::from(&old_bot.twitch_channel);
-        Arabot{name: name, oauth: oauth, twitch_channel: tc, incoming_queue: m, answer_queue: a, commands: c, command_symbol: String::from(command_symbol), message_wait: message_wait}
+        Arabot{name: name, oauth: oauth, twitch_channel: tc, incoming_queue: m, answer_queue: a, command_symbol: String::from(command_symbol), message_wait: message_wait}
     }
-    pub fn add_command(&mut self, new_command: ChatCommand<F>){
-        self.commands.get_mut().unwrap().insert(format!("{}{}", self.command_symbol, new_command.command), new_command);
-    }
-    pub async fn start_bot(&mut self)-> Result<(), Error>{
+    pub async fn start_bot(&self, commands: &CommandHash)-> Result<(), Error>{
         let irc_client_config = client::data::config::Config {
             nickname: Some(String::from(&self.name)),
             channels: vec![String::from(&self.twitch_channel)],
@@ -96,19 +101,20 @@ impl<F: FnMut(String, String) -> String + 'static> Arabot<F>{
             }
         });
 
-        let arabot = Arc::new(Arabot::from(self));
-        let cloned_arabot = Arc::clone(&arabot);
+        let arabot_symbol = Arc::new(String::from(self.command_symbol.as_str()));
+        let cloned_arabot_symbol = Arc::clone(&arabot_symbol);
         let command_thread = thread::spawn(move || {
-            let commands = cloned_arabot.commands.lock().unwrap();
-            let mut command_reg = Arabot::generate_regex(&commands, &cloned_arabot.command_symbol);
+            let mut command_reg = Regex::new(r"").unwrap();
+            command_reg = Arabot::generate_regex(&commands.commands, &cloned_arabot_symbol);
             loop {
+                //let locked_commands = cloned_commands.commands;
                 let cmd = cr.recv().unwrap();
                 //TODO insert proper logic for handling more than just !hello
                 if command_reg.is_match(&cmd.text){
                     let command = command_reg.find(&cmd.text).unwrap().as_str();
                     match command{ //special commands are placed in their own patterns in the match, while "regular" commands all go into default.
                         "!hello" => rs.send((format!("Hello, {}", cmd.user), cmd.channel)).unwrap(),
-                        _default => rs.send((format!("{}", (commands[command].response)(String::from(&cmd.user), cmd.text)), String::from(&cmd.user))).unwrap(),//rs.send((format!("Error occured: No command found"), cmd.channel)).unwrap(),
+                        _default => rs.send((format!("{}", (commands.commands.get_mut(command).unwrap().response)(String::from(&cmd.user), cmd.text)), String::from(&cmd.user))).unwrap(),//rs.send((format!("Error occured: No command found"), cmd.channel)).unwrap(),
                     }
                 }
                 //if cmd.text.contains("!hello"){
@@ -143,7 +149,7 @@ impl<F: FnMut(String, String) -> String + 'static> Arabot<F>{
         let _ = answer_thread.join();
         Ok(())
     }
-    fn generate_regex(commands: &HashMap<String, ChatCommand<F>>, command_symbol: &String) -> Regex{
+    fn generate_regex(commands: &HashMap<String, ChatCommand>, command_symbol: &String) -> Regex{
         let mut command_reg: String  = String::from(format!(r"^"));
         for i in commands.keys() {
     //        command_reg.push(format!(r"{}{}", command_symbol, commands[i].command))

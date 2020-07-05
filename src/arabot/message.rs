@@ -19,19 +19,19 @@ pub enum Elevation{
     Viewer
 }
 
-pub struct ChatCommand<F: FnMut(String, String) -> String + 'static>{
+pub struct ChatCommand{
     pub command: String,
     pub elevation: Elevation,
-    pub response: Arc<F>,
+    pub response: Box<dyn FnMut(String, String) -> String>,
     pub help: String,
     pub repeat_interval: i64,
 }
 
-unsafe impl<F: FnMut(String, String) -> String> Send for ChatCommand<F> {}
-unsafe impl<F: FnMut(String, String) -> String> Sync for ChatCommand<F> {}
+unsafe impl Send for ChatCommand{}
+unsafe impl Sync for ChatCommand{}
 
-impl<F: FnMut(String, String) -> String + 'static> ChatCommand<F>{
-    pub fn new(c: String, e: Elevation, r: Arc<F>, h: String, ri: i64)->ChatCommand<F>{
+impl ChatCommand{
+    pub fn new(c: String, e: Elevation, r: Box<dyn FnMut(String, String) -> String>, h: String, ri: i64)->ChatCommand{
         ChatCommand{command: c, elevation: e, response: r, help: h, repeat_interval: ri}    
     }
 }
