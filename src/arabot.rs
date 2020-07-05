@@ -1,6 +1,6 @@
 use std::{env, error, thread, time};
 use message::{ChatMessage,Reply,ChatCommand, Elevation};
-mod message;
+pub mod message;
 
 use std::sync::mpsc::{channel};
 use std::sync::{Mutex,Arc};
@@ -12,18 +12,18 @@ use irc::client;
 use irc::error::Error;
 use irc::proto::command::{CapSubCommand,Command};
 
-pub struct CommandHash<'a> {
-    pub commands: HashMap<&'a String, &'a ChatCommand>
+pub struct CommandHash {
+    pub commands: HashMap<String, ChatCommand>
 }
 
-impl<'a> CommandHash<'a>{
-    pub fn new ()->CommandHash<'a>{
-        let mut commands = HashMap::<&'a String, &'a ChatCommand>::new();
+impl CommandHash{
+    pub fn new ()->CommandHash{
+        let mut commands = HashMap::<String, ChatCommand>::new();
         CommandHash{commands: commands}
     }
     pub fn add_command(&mut self, new_command: ChatCommand, command_symbol: String){
         //self.commands.get_mut().unwrap().insert(format!("{}{}", command_symbol, new_command.command), new_command);
-        self.commands.insert(format!("{}{}", command_symbol, new_command.command), &new_command);
+        self.commands.insert(format!("{}{}", command_symbol, new_command.command), new_command);
     }
 }
 
@@ -34,7 +34,7 @@ pub struct Arabot {
     pub incoming_queue: Vec<ChatMessage>,
     pub answer_queue: Vec<Reply>,
     //pub commands: Mutex<HashMap<String, ChatCommand<F>>>,
-    command_symbol: String,
+    pub command_symbol: String,
     message_wait: u64
 }
 
@@ -58,7 +58,8 @@ impl Arabot{
         let tc = String::from(&old_bot.twitch_channel);
         Arabot{name: name, oauth: oauth, twitch_channel: tc, incoming_queue: m, answer_queue: a, command_symbol: String::from(command_symbol), message_wait: message_wait}
     }
-    pub async fn start_bot(&self, commands: &CommandHash)-> Result<(), Error>{
+    pub async fn start_bot(&self, commands: Box<CommandHash>)-> Result<(), Error>{
+        let mut commands = Box::new(commands);
         let irc_client_config = client::data::config::Config {
             nickname: Some(String::from(&self.name)),
             channels: vec![String::from(&self.twitch_channel)],
@@ -114,7 +115,7 @@ impl Arabot{
                     let command = command_reg.find(&cmd.text).unwrap().as_str();
                     match command{ //special commands are placed in their own patterns in the match, while "regular" commands all go into default.
                         "!hello" => rs.send((format!("Hello, {}", cmd.user), cmd.channel)).unwrap(),
-                        _default => rs.send((format!("{}", (commands.commands.get_mut(command).unwrap().response)(String::from(&cmd.user), cmd.text)), String::from(&cmd.user))).unwrap(),//rs.send((format!("Error occured: No command found"), cmd.channel)).unwrap(),
+                        default => rs.send((format!("{}", (commands.commands.get_mut(command).unwrap().response)(String::from(&cmd.user), cmd.text)), String::from(&cmd.channel))).unwrap(),//rs.send((format!("Error occured: No command found"), cmd.channel)).unwrap(),
                     }
                 }
                 //if cmd.text.contains("!hello"){
