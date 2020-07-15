@@ -114,6 +114,7 @@ impl Arabot{
                 //TODO insert proper logic for handling more than just !hello
                 if command_reg.is_match(&cmd.text){
                     let command = command_reg.find(&cmd.text).unwrap().as_str();
+                    //TODO: svote, evote, extend, remember, vote, add command
                     match &command[1..]{ //special commands are placed in their own patterns in the match, while "regular" commands all go into default.
                         "hello" => rs.send((format!("Hello, {}", cmd.user), cmd.channel)).unwrap(),
                         "slots" => {
