@@ -1,7 +1,10 @@
 mod config;
 
-use std::io;
+//use std::io;
 use tokio::prelude::*;
+use std::fs::File;
+use std::io::{self,BufReader};
+use std::io::prelude::*;
 
 use arabot::arabot::{Arabot, CommandHash};
 use arabot::arabot::message::{ChatCommand, Elevation};
@@ -12,9 +15,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
 
     //Runtime::new().expect("Error").block_on(bot.start_bot());
     let mut commands = Box::new(CommandHash::new());
-    let command = ChatCommand::new(String::from("sluts"), Elevation::Viewer, Box::new(|_user, _text| String::from("SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm")), String::from("SkopsGasme"), 0);
-    commands.add_command(command, String::from(bot.command_symbol.as_str()));
-    let w = bot.start_bot(commands);
+    let mut emotes: Vec<String> = Vec::new();
+    let emote_file = File::open("emotes.txt")?;
+    let reader = BufReader::new(emote_file);
+    for line in reader.lines() {
+        emotes.push(line.unwrap());
+    }
+
+    let sluts = ChatCommand::new(String::from("sluts"), Elevation::Viewer, Box::new(|_user, _text| String::from("SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm")), String::from("SkopsGasme"), 0);
+    let slots = ChatCommand::new(String::from("slots"), Elevation::Viewer, Box::new(|_user, _text|
+            String::from("test")), String::from("Rolls random emotes with a possibility to get a
+            jackpot"), 0);
+    commands.add_command(sluts, String::from(bot.command_symbol.as_str()));
+    commands.add_command(slots, String::from(bot.command_symbol.as_str()));
+    let w = bot.start_bot(commands, emotes);
     w.await.unwrap();
     Ok(())
 }

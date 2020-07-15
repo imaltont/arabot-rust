@@ -11,6 +11,7 @@ use futures::prelude::*;
 use irc::client;
 use irc::error::Error;
 use irc::proto::command::{CapSubCommand,Command};
+use rand::prelude::*;
 
 pub struct CommandHash {
     pub commands: HashMap<String, ChatCommand>
@@ -48,17 +49,17 @@ impl Arabot{
         hash.push_str(&tc);
         Arabot{name: name, oauth: oauth, twitch_channel: String::from(hash), incoming_queue: m, answer_queue: a, command_symbol: String::from(command_symbol), message_wait: message_wait}
     }
-    pub fn from (old_bot: &Arabot) -> Arabot {
-        let name = String::from(&old_bot.name);
-        let oauth = String::from(&old_bot.oauth);
-        let command_symbol = String::from(&old_bot.command_symbol);
-        let message_wait = old_bot.message_wait;
-        let mut m: Vec<ChatMessage> = Vec::new();
-        let mut a: Vec<Reply> = Vec::new();
-        let tc = String::from(&old_bot.twitch_channel);
-        Arabot{name: name, oauth: oauth, twitch_channel: tc, incoming_queue: m, answer_queue: a, command_symbol: String::from(command_symbol), message_wait: message_wait}
-    }
-    pub async fn start_bot(&self, commands: Box<CommandHash>)-> Result<(), Error>{
+//    pub fn from (old_bot: &Arabot) -> Arabot {
+//        let name = String::from(&old_bot.name);
+//        let oauth = String::from(&old_bot.oauth);
+//        let command_symbol = String::from(&old_bot.command_symbol);
+//        let message_wait = old_bot.message_wait;
+//        let mut m: Vec<ChatMessage> = Vec::new();
+//        let mut a: Vec<Reply> = Vec::new();
+//        let tc = String::from(&old_bot.twitch_channel);
+//        Arabot{name: name, oauth: oauth, twitch_channel: tc, incoming_queue: m, answer_queue: a, command_symbol: String::from(command_symbol), message_wait: message_wait}
+//    }
+    pub async fn start_bot(&self, commands: Box<CommandHash>, emote_list: Vec<String> )-> Result<(), Error>{
         let mut commands = Box::new(commands);
         let irc_client_config = client::data::config::Config {
             nickname: Some(String::from(&self.name)),
@@ -113,9 +114,20 @@ impl Arabot{
                 //TODO insert proper logic for handling more than just !hello
                 if command_reg.is_match(&cmd.text){
                     let command = command_reg.find(&cmd.text).unwrap().as_str();
-                    match command{ //special commands are placed in their own patterns in the match, while "regular" commands all go into default.
-                        "!hello" => rs.send((format!("Hello, {}", cmd.user), cmd.channel)).unwrap(),
-                        default => rs.send((format!("{}", (commands.commands.get_mut(command).unwrap().response)(String::from(&cmd.user), cmd.text)), String::from(&cmd.channel))).unwrap(),//rs.send((format!("Error occured: No command found"), cmd.channel)).unwrap(),
+                    match &command[1..]{ //special commands are placed in their own patterns in the match, while "regular" commands all go into default.
+                        "hello" => rs.send((format!("Hello, {}", cmd.user), cmd.channel)).unwrap(),
+                        "slots" => {
+                            let emote1 = emote_list.choose(&mut rand::thread_rng()).unwrap();
+                            let emote2 = emote_list.choose(&mut rand::thread_rng()).unwrap();
+                            let emote3 = emote_list.choose(&mut rand::thread_rng()).unwrap();
+
+                            if emote1.as_str() == emote2.as_str() && emote2.as_str() == emote3.as_str() {
+                                rs.send((format!("{} {} {} JACKPOT @{}", emote1, emote2, emote3, cmd.user), cmd.channel)).unwrap();
+                            } else {
+                                rs.send((format!("{} {} {} @{}", emote1, emote2, emote3, cmd.user), cmd.channel)).unwrap();
+                            }
+                        },
+                        _default => rs.send((format!("{}", (commands.commands.get_mut(command).unwrap().response)(String::from(&cmd.user), cmd.text)), String::from(&cmd.channel))).unwrap(),//rs.send((format!("Error occured: No command found"), cmd.channel)).unwrap(),
                     }
                 }
                 //if cmd.text.contains("!hello"){
