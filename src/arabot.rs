@@ -1,5 +1,5 @@
 use std::{env, error, thread, time};
-use message::{ChatMessage,Reply,ChatCommand, Elevation};
+use message::{ChatMessage,Reply,ChatCommand, Elevation, VoteObj};
 pub mod message;
 
 use std::sync::mpsc::{channel};
@@ -61,6 +61,8 @@ impl Arabot{
 //    }
     pub async fn start_bot(&self, commands: Box<CommandHash>, emote_list: Vec<String> )-> Result<(), Error>{
         let mut commands = Box::new(commands);
+        let mut votes: VoteObj = VoteObj::new(String::from(""));
+        let mut time_left: i64 = 0;
         let irc_client_config = client::data::config::Config {
             nickname: Some(String::from(&self.name)),
             channels: vec![String::from(&self.twitch_channel)],
@@ -117,6 +119,13 @@ impl Arabot{
                     //TODO: svote, evote, extend, remember, vote, add command
                     match &command[1..]{ //special commands are placed in their own patterns in the match, while "regular" commands all go into default.
                         "hello" => rs.send((format!("Hello, {}", cmd.user), cmd.channel)).unwrap(),
+                        "vote" => {
+                            votes.has_started = true; //TODO: remove, only here for testing purposes
+                            if votes.has_started {
+                                votes.add_time(String::from(cmd.user.as_str()), 0); //TODO: get time through regex
+                                rs.send((format!("{} voted on the time {}", cmd.user, 0), cmd.channel)).unwrap();
+                            }
+                        }
                         "slots" => {
                             let emote1 = emote_list.choose(&mut rand::thread_rng()).unwrap();
                             let emote2 = emote_list.choose(&mut rand::thread_rng()).unwrap();
@@ -173,6 +182,11 @@ impl Arabot{
         command_reg.push_str(r"{1}");
         regex::Regex::new(&command_reg).unwrap()
     }
-
+}
+fn convert_int_string(time: i64) -> String {
+    String::from("")
+}
+fn convert_string_int(time: String) -> i64 {
+    0
 }
 

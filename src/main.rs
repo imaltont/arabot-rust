@@ -23,11 +23,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
     }
 
     let sluts = ChatCommand::new(String::from("sluts"), Elevation::Viewer, Box::new(|_user, _text| String::from("SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm")), String::from("SkopsGasme"), 0);
+    let vote = ChatCommand::new(String::from("vote"), Elevation::Viewer, Box::new(|_user, _text| String::from("Registers a vote")), String::from("Lets you register a vote while active. You can vote with h:mm:ss"), 0);
     let slots = ChatCommand::new(String::from("slots"), Elevation::Viewer, Box::new(|_user, _text|
             String::from("test")), String::from("Rolls random emotes with a possibility to get a
             jackpot"), 0);
     commands.add_command(sluts, String::from(bot.command_symbol.as_str()));
     commands.add_command(slots, String::from(bot.command_symbol.as_str()));
+    commands.add_command(vote, String::from(bot.command_symbol.as_str()));
     let w = bot.start_bot(commands, emotes);
     w.await.unwrap();
     Ok(())
