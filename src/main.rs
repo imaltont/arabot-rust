@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bot = Arabot::new(
         (&config::CONFIG.name).to_string(),
         (&config::CONFIG.oauth).to_string(),
-        "thextera_".to_string(),
+        "imaltont".to_string(),
         "!".to_string(),
         1,
     );
@@ -61,10 +61,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
         0,
     );
+    let specs = ChatCommand::new(
+        String::from("specs"),
+        Elevation::Viewer,
+        Box::new(|_user, _text| String::from("I dno, check the description.")),
+        String::from(
+            "Rolls random emotes with a possibility to get a
+            jackpot",
+        ),
+        0,
+    );
     commands.add_command(sluts, String::from(bot.command_symbol.as_str()));
     commands.add_command(slots, String::from(bot.command_symbol.as_str()));
     commands.add_command(vote, String::from(bot.command_symbol.as_str()));
     commands.add_command(bee, String::from(bot.command_symbol.as_str()));
+    commands.add_command(specs, String::from(bot.command_symbol.as_str()));
     let w = bot.start_bot(commands, emotes);
     w.await.unwrap();
     Ok(())

@@ -209,7 +209,7 @@ impl Arabot {
             bee_facts[58] = "Honey bees have 170 odorant receptors, and have a sense of smell 50 times more powerful than a dog.";
             bee_facts[59] = "Every bee colony has its own distinct scent so that members can identify each other.";
             bee_facts[60] = "A hive is perennial, meaning that it becomes inactive in the winter but “awakens” again in the spring. When individuals die, they are quickly replace – workers every 6-8 weeks, and the queen every 2-3 years. Because of this, a hive could technically be immortal!";
-            bee_facts[61] = "Bes have 2 stomachs – one for eating, and one for storing nectar.Honey Bee Anatomy Diagram Bee Fact";
+            bee_facts[61] = "Bees have 2 stomachs – one for eating, and one for storing nectar.Honey Bee Anatomy Diagram Bee Fact";
             bee_facts[62] = "Bees have existed for around 30 million years.";
             bee_facts[63] = "Hives produce 5 distinct substances: honey, beeswax, propolis, pollen, and royal jelly.";
             bee_facts[64] =
@@ -258,13 +258,13 @@ impl Arabot {
                 //let locked_commands = cloned_commands.commands;
                 let cmd = cr.recv().unwrap();
                 //TODO insert proper logic for handling more than just !hello
-                if command_reg.is_match(&cmd.text) {
-                    let command = command_reg.find(&cmd.text).unwrap().as_str();
+                if command_reg.is_match(&cmd.text.trim()) {
+                    let command = command_reg.find(&cmd.text.trim()).unwrap().as_str();
                     //TODO: svote, evote, extend, remember, vote, add command
                     match &command[1..] {
                         //special commands are placed in their own patterns in the match, while "regular" commands all go into default.
                         "hello" => rs
-                            .send((format!("Hello, {}", cmd.user), cmd.channel))
+                            .send((format!("!hello Hello, {}", cmd.user), cmd.channel))
                             .unwrap(),
                         "vote" => {
                             votes.has_started = true; //TODO: remove, only here for testing purposes
@@ -361,9 +361,9 @@ impl Arabot {
         let mut command_reg: String = String::from(format!(r"^"));
         for i in commands.keys() {
             //        command_reg.push(format!(r"{}{}", command_symbol, commands[i].command))
-            command_reg.push_str(format!(r"{}{}|", command_symbol, commands[i].command).as_str());
+            command_reg.push_str(format!(r"^{}{}\b|", command_symbol, commands[i].command).as_str());
         }
-        command_reg.push_str(format!(r"{}hello", command_symbol).as_str());
+        command_reg.push_str(format!(r"^{}hello\b", command_symbol).as_str());
         command_reg.push_str(r"{1}");
         regex::Regex::new(&command_reg).unwrap()
     }
