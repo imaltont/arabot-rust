@@ -1,4 +1,4 @@
-use message::{ChatCommand, ChatMessage, Elevation, Reply, VoteObj};
+use message::{ChatCommand, ChatMessage, Elevation, Reply, VoteObj, VoteRegex};
 use std::{env, error, thread, time};
 pub mod message;
 
@@ -81,8 +81,8 @@ impl Arabot {
         emote_list: Vec<String>,
     ) -> Result<(), Error> {
         let mut commands = Box::new(commands);
-        let mut votes: VoteObj = VoteObj::new(String::from(""));
-        let mut time_left: i64 = 0;
+        let mut ongoing_votes: HashMap<String, VoteObj> = HashMap::new();
+        let voting_regex = VoteRegex::new();
         let irc_client_config = client::data::config::Config {
             nickname: Some(String::from(&self.name)),
             channels: vec![String::from(&self.twitch_channel)],
@@ -254,6 +254,7 @@ impl Arabot {
                 "Bees have their own “facial recognition software,” and can recognize human faces.";
             bee_facts[99] = "Bee Laura Maigatter Facial Recognition";
 
+            let mut votes = VoteObj::new(0, String::from(""));
             loop {
                 //let locked_commands = cloned_commands.commands;
                 let cmd = cr.recv().unwrap();
@@ -264,17 +265,44 @@ impl Arabot {
                     match &command[1..] {
                         //special commands are placed in their own patterns in the match, while "regular" commands all go into default.
                         "hello" => rs
-                            .send((format!("!hello Hello, {}", cmd.user), cmd.channel))
+                            .send((format!("Hello, {}", cmd.user), cmd.channel))
                             .unwrap(),
                         "vote" => {
                             votes.has_started = true; //TODO: remove, only here for testing purposes
                             if votes.has_started {
-                                votes.add_time(String::from(cmd.user.as_str()), 0); //TODO: get time through regex
+                                if voting_regex.time_regex.is_match(&cmd.text) {
+                                    let time = voting_regex.time_regex.find(&cmd.text).unwrap().as_str();
+                                    votes.add_vote(String::from(cmd.user.as_str()), convert_string_int(String::from(time))); //TODO: get time through regex
+                                    rs.send((
+                                        format!("{} voted on the time {}", cmd.user, time),
+                                        cmd.channel,
+                                    ))
+                                    .unwrap();
+                                } else if voting_regex.number_regex.is_match(&cmd.text) {
+                                    let number = voting_regex.number_regex.find(&cmd.text).unwrap().as_str();
+                                    votes.add_vote(String::from(cmd.user.as_str()), convert_string_int(String::from(number))); //TODO: get time through regex
+                                    rs.send((
+                                        format!("{} voted on {}", cmd.user, number),
+                                        cmd.channel,
+                                    ))
+                                    .unwrap();
+                                    
+                                }else {
+                                    rs.send((
+                                        format!("@{} {}", cmd.user, commands.commands.get_mut(command).unwrap().help),
+                                        cmd.channel,
+                                    ))
+                                    .unwrap();
+                                }
+                            } else {
                                 rs.send((
-                                    format!("{} voted on the time {}", cmd.user, 0),
+                                    format!(
+                                        "@{} there is currently no active voting session",
+                                        cmd.user
+                                    ),
                                     cmd.channel,
                                 ))
-                                .unwrap();
+                                .unwrap()
                             }
                         }
                         "bee" => {
@@ -361,7 +389,8 @@ impl Arabot {
         let mut command_reg: String = String::from(format!(r"^"));
         for i in commands.keys() {
             //        command_reg.push(format!(r"{}{}", command_symbol, commands[i].command))
-            command_reg.push_str(format!(r"^{}{}\b|", command_symbol, commands[i].command).as_str());
+            command_reg
+                .push_str(format!(r"^{}{}\b|", command_symbol, commands[i].command).as_str());
         }
         command_reg.push_str(format!(r"^{}hello\b", command_symbol).as_str());
         command_reg.push_str(r"{1}");

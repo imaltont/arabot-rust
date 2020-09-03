@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         String::from("vote"),
         Elevation::Viewer,
         Box::new(|_user, _text| String::from("Registers a vote")),
-        String::from("Lets you register a vote while active. You can vote with h:mm:ss"),
+        String::from("Lets you register a vote while one is active. You can vote with h:mm:ss or a number"),
         0,
     );
     let slots = ChatCommand::new(
