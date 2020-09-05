@@ -1,5 +1,5 @@
 use message::{ChatCommand, ChatMessage, Elevation, Reply, VoteObj, VoteRegex};
-use std::{env, error, thread, time};
+use std::{thread, time};
 pub mod message;
 
 use futures::prelude::*;
@@ -82,7 +82,7 @@ impl Arabot {
     ) -> Result<(), Error> {
         let mut commands = Box::new(commands);
         let mut ongoing_votes: HashMap<String, VoteObj> = HashMap::new();
-        let voting_regex = VoteRegex::new();
+        let regex_collection = VoteRegex::new();
         let irc_client_config = client::data::config::Config {
             nickname: Some(String::from(&self.name)),
             channels: vec![String::from(&self.twitch_channel)],
@@ -136,6 +136,8 @@ impl Arabot {
             let mut command_reg = Regex::new(r"").unwrap();
             command_reg = Arabot::generate_regex(&commands.commands, &cloned_arabot_symbol);
             let mut bee_facts: [&str; 100] = [""; 100];
+            //TODO: move this section to its own file/other place. Should read this in from a file
+            //or have it as part of a script at some point.
             bee_facts[0] = "The practice of beekeeping dates back at least 4,500 years";
             bee_facts[1] =
                 "Approximately one third of the food we eat is the result of honey bee pollination";
@@ -267,29 +269,52 @@ impl Arabot {
                         "hello" => rs
                             .send((format!("Hello, {}", cmd.user), cmd.channel))
                             .unwrap(),
+                        "svote" => {}
+                        "evote" => {}
+                        "extend" => {}
+                        "remember" => {}
+                        "mytime" => {}
+                        "add" => {}
                         "vote" => {
                             votes.has_started = true; //TODO: remove, only here for testing purposes
                             if votes.has_started {
-                                if voting_regex.time_regex.is_match(&cmd.text) {
-                                    let time = voting_regex.time_regex.find(&cmd.text).unwrap().as_str();
-                                    votes.add_vote(String::from(cmd.user.as_str()), convert_string_int(String::from(time))); //TODO: get time through regex
+                                if regex_collection.time_regex.is_match(&cmd.text) {
+                                    let time = regex_collection
+                                        .time_regex
+                                        .find(&cmd.text)
+                                        .unwrap()
+                                        .as_str();
+                                    votes.add_vote(
+                                        String::from(cmd.user.as_str()),
+                                        convert_string_int(String::from(time)),
+                                    ); //TODO: get time through regex
                                     rs.send((
                                         format!("{} voted on the time {}", cmd.user, time),
                                         cmd.channel,
                                     ))
                                     .unwrap();
-                                } else if voting_regex.number_regex.is_match(&cmd.text) {
-                                    let number = voting_regex.number_regex.find(&cmd.text).unwrap().as_str();
-                                    votes.add_vote(String::from(cmd.user.as_str()), convert_string_int(String::from(number))); //TODO: get time through regex
+                                } else if regex_collection.number_regex.is_match(&cmd.text) {
+                                    let number = regex_collection
+                                        .number_regex
+                                        .find(&cmd.text)
+                                        .unwrap()
+                                        .as_str();
+                                    votes.add_vote(
+                                        String::from(cmd.user.as_str()),
+                                        convert_string_int(String::from(number)),
+                                    ); //TODO: get time through regex
                                     rs.send((
                                         format!("{} voted on {}", cmd.user, number),
                                         cmd.channel,
                                     ))
                                     .unwrap();
-                                    
-                                }else {
+                                } else {
                                     rs.send((
-                                        format!("@{} {}", cmd.user, commands.commands.get_mut(command).unwrap().help),
+                                        format!(
+                                            "@{} {}",
+                                            cmd.user,
+                                            commands.commands.get_mut(command).unwrap().help
+                                        ),
                                         cmd.channel,
                                     ))
                                     .unwrap();
@@ -303,6 +328,65 @@ impl Arabot {
                                     cmd.channel,
                                 ))
                                 .unwrap()
+                            }
+                        }
+                        "help" => {
+                            //TODO: exchange with regex to find if it included a command to ask for
+                            //help
+                            if !regex_collection.help_regex.is_match(&cmd.text) {
+                                let mut viewer_commands = String::from("Normal commands: ");
+                                let mut moderator_commands =
+                                    String::from("Moderator only commands: ");
+                                let mut broadcaster_commands =
+                                    String::from("Broadcaster only commands: ");
+
+                                for (k, c) in &commands.commands {
+                                    match c.elevation {
+                                        Elevation::Viewer => {
+                                            viewer_commands.push_str(&format!("{}, ", &k[1..]))
+                                        }
+                                        Elevation::Moderator => {
+                                            moderator_commands.push_str(&format!("{}, ", &k[1..]))
+                                        }
+                                        Elevation::Broadcaster => {
+                                            broadcaster_commands.push_str(&format!("{}, ", &k[1..]))
+                                        }
+                                    }
+                                }
+                                rs.send((
+                                    format!(
+                                        "{} {} {} ",
+                                        viewer_commands, moderator_commands, broadcaster_commands
+                                    ),
+                                    cmd.channel,
+                                ))
+                                .unwrap();
+                            } else {
+                                let help_command = format!(
+                                    "{}{}",
+                                    &cloned_arabot_symbol,
+                                    regex_collection
+                                        .help_regex
+                                        .captures(&cmd.text)
+                                        .unwrap()
+                                        .get(1)
+                                        .unwrap()
+                                        .as_str()
+                                );
+                                if command_reg.is_match(&help_command) {
+                                    rs.send((
+                                        format!(
+                                            "{}",
+                                            commands
+                                                .commands
+                                                .get_mut(help_command.as_str())
+                                                .unwrap()
+                                                .help
+                                        ),
+                                        cmd.channel,
+                                    ))
+                                    .unwrap();
+                                }
                             }
                         }
                         "bee" => {

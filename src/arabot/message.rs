@@ -14,6 +14,7 @@ pub struct VoteRegex {
     pub number_regex: Regex,
     pub file_regex: Regex,
     pub vote_regex: Regex,
+    pub help_regex: Regex,
 }
 pub struct ChatMessage {
     pub user: String,
@@ -102,12 +103,14 @@ impl VoteRegex {
         let number_regex = regex::Regex::new(r":{0}\d+").unwrap();
         let file_regex = regex::Regex::new(r"(?:\d )\w*").unwrap();
         let vote_regex = regex::Regex::new(r"(?:vote )\w*(?: \d)").unwrap();
+        let help_regex = regex::Regex::new(r"(?:help )(\w+\b)").unwrap();
 
         VoteRegex {
             time_regex: time_regex,
             number_regex: number_regex,
             file_regex: file_regex,
             vote_regex: vote_regex,
+            help_regex: help_regex,
         }
     }
 }
