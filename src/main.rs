@@ -61,7 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     let svote = ChatCommand::new(
         String::from("svote"),
-        Elevation::Viewer,
+        Elevation::Moderator,
         Box::new(|_user, _text| String::from("Starts a vote")),
         String::from(
             "Starts a new voting session. You can start it with a name if several are already running, the time in seconds or hour, minutes and/or seconds, and you can give it a name for saving the votes and results in a csv file",
@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     let evote = ChatCommand::new(
         String::from("evote"),
-        Elevation::Viewer,
+        Elevation::Moderator,
         Box::new(|_user, _text| String::from("Ends a vote")),
         String::from(
             "Ends a voting session",
