@@ -68,6 +68,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
         0,
     );
+    let evote = ChatCommand::new(
+        String::from("evote"),
+        Elevation::Viewer,
+        Box::new(|_user, _text| String::from("Ends a vote")),
+        String::from(
+            "Ends a voting session",
+        ),
+        0,
+    );
     let help = ChatCommand::new(
         String::from("help"),
         Elevation::Viewer,
@@ -94,6 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     commands.add_command(slots, String::from(bot.command_symbol.as_str()));
     commands.add_command(vote, String::from(bot.command_symbol.as_str()));
     commands.add_command(svote, String::from(bot.command_symbol.as_str()));
+    commands.add_command(evote, String::from(bot.command_symbol.as_str()));
     commands.add_command(help, String::from(bot.command_symbol.as_str()));
     commands.add_command(bee, String::from(bot.command_symbol.as_str()));
     commands.add_command(specs, String::from(bot.command_symbol.as_str()));

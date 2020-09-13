@@ -300,7 +300,12 @@ impl Arabot {
                                 });
                             }
                         }
-                        "evote" => {}
+                        "evote" => {
+                            while votes.times.lock().unwrap().len() != 0 {
+                                votes.time_left.lock().unwrap().pop();
+                            }
+                            votes.active_thread.lock().unwrap().thread().unpark();
+                        }
                         "extend" => {}
                         "remember" => {}
                         "mytime" => {}

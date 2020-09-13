@@ -86,7 +86,7 @@ impl VoteObj {
     pub fn start_vote(current_session: Arc<VoteObj>) {
         *current_session.has_started.lock().unwrap() = true;
         while current_session.time_left.lock().unwrap().len() != 0 {
-            thread::sleep(time::Duration::from_secs(
+            thread::park_timeout(time::Duration::from_secs(
                 current_session.time_left.lock().unwrap().pop().unwrap(),
             ));
         }
