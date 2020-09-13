@@ -260,7 +260,6 @@ impl Arabot {
             loop {
                 //let locked_commands = cloned_commands.commands;
                 let cmd = cr.recv().unwrap();
-                //TODO insert proper logic for handling more than just !hello
                 if command_reg.is_match(&cmd.text.trim()) {
                     let command = command_reg.find(&cmd.text.trim()).unwrap().as_str();
                     //TODO: svote, evote, extend, remember, vote, add command
@@ -269,15 +268,48 @@ impl Arabot {
                         "hello" => rs
                             .send((format!("Hello, {}", cmd.user), cmd.channel))
                             .unwrap(),
-                        "svote" => {}
+                        "svote" => {
+                            if regex_collection.time_regex.is_match(&cmd.text) {
+                                let time = convert_string_int(String::from(
+                                    regex_collection
+                                        .time_regex
+                                        .find(&cmd.text)
+                                        .unwrap()
+                                        .as_str(),
+                                ));
+                                let mut location = String::from("");
+                                if regex_collection.file_regex.is_match(&cmd.text) {
+                                    location = String::from(
+                                        regex_collection
+                                            .file_regex
+                                            .captures(&cmd.text)
+                                            .unwrap()
+                                            .get(1)
+                                            .unwrap()
+                                            .as_str(),
+                                    );
+                                }
+                                votes = VoteObj::new(time, location);
+                                let votes_clone = Arc::clone(&votes);
+                                let rs_clone = rs.clone();
+                                print!("test");
+                                *votes.active_thread.lock().unwrap() = thread::spawn(move || {
+                                    rs_clone.send((String::from("Voting session started!"), String::from(cmd.channel.as_str()))).unwrap();
+                                    VoteObj::start_vote(votes_clone);
+                                    rs_clone.send((String::from("Voting session ended!"), String::from(cmd.channel.as_str()))).unwrap();
+                                });
+                            }
+                        }
                         "evote" => {}
                         "extend" => {}
                         "remember" => {}
                         "mytime" => {}
                         "add" => {}
                         "vote" => {
-                            votes.has_started = true; //TODO: remove, only here for testing purposes
-                            if votes.has_started {
+                            //TODO: add the use of the hashmap with votes
+                            //TODO: add regex to recognize where to put the vote
+                            //votes.has_started = true; //TODO: remove, only here for testing purposes
+                            if *votes.has_started.lock().unwrap() {
                                 if regex_collection.time_regex.is_match(&cmd.text) {
                                     let time = regex_collection
                                         .time_regex
@@ -287,24 +319,9 @@ impl Arabot {
                                     votes.add_vote(
                                         String::from(cmd.user.as_str()),
                                         convert_string_int(String::from(time)),
-                                    ); //TODO: get time through regex
+                                    );
                                     rs.send((
-                                        format!("{} voted on the time {}", cmd.user, time),
-                                        cmd.channel,
-                                    ))
-                                    .unwrap();
-                                } else if regex_collection.number_regex.is_match(&cmd.text) {
-                                    let number = regex_collection
-                                        .number_regex
-                                        .find(&cmd.text)
-                                        .unwrap()
-                                        .as_str();
-                                    votes.add_vote(
-                                        String::from(cmd.user.as_str()),
-                                        convert_string_int(String::from(number)),
-                                    ); //TODO: get time through regex
-                                    rs.send((
-                                        format!("{} voted on {}", cmd.user, number),
+                                        format!("{} voted on {}", cmd.user, time),
                                         cmd.channel,
                                     ))
                                     .unwrap();
@@ -331,8 +348,6 @@ impl Arabot {
                             }
                         }
                         "help" => {
-                            //TODO: exchange with regex to find if it included a command to ask for
-                            //help
                             if !regex_collection.help_regex.is_match(&cmd.text) {
                                 let mut viewer_commands = String::from("Normal commands: ");
                                 let mut moderator_commands =
@@ -481,9 +496,9 @@ impl Arabot {
         regex::Regex::new(&command_reg).unwrap()
     }
 }
-fn convert_int_string(time: i64) -> String {
+fn convert_int_string(time: u64) -> String {
     String::from("")
 }
-fn convert_string_int(time: String) -> i64 {
-    0
+fn convert_string_int(time: String) -> u64 {
+    20
 }

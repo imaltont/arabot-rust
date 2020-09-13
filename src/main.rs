@@ -59,6 +59,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
         0,
     );
+    let svote = ChatCommand::new(
+        String::from("svote"),
+        Elevation::Viewer,
+        Box::new(|_user, _text| String::from("Starts a vote")),
+        String::from(
+            "Starts a new voting session. You can start it with a name if several are already running, the time in seconds or hour, minutes and/or seconds, and you can give it a name for saving the votes and results in a csv file",
+        ),
+        0,
+    );
     let help = ChatCommand::new(
         String::from("help"),
         Elevation::Viewer,
@@ -84,6 +93,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     commands.add_command(sluts, String::from(bot.command_symbol.as_str()));
     commands.add_command(slots, String::from(bot.command_symbol.as_str()));
     commands.add_command(vote, String::from(bot.command_symbol.as_str()));
+    commands.add_command(svote, String::from(bot.command_symbol.as_str()));
     commands.add_command(help, String::from(bot.command_symbol.as_str()));
     commands.add_command(bee, String::from(bot.command_symbol.as_str()));
     commands.add_command(specs, String::from(bot.command_symbol.as_str()));
