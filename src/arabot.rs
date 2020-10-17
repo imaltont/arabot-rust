@@ -12,6 +12,7 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
+use std::convert::TryInto;
 
 pub struct CommandHash {
     pub commands: HashMap<String, ChatCommand>,
@@ -292,7 +293,6 @@ impl Arabot {
                                 votes = VoteObj::new(time, location);
                                 let votes_clone = Arc::clone(&votes);
                                 let rs_clone = rs.clone();
-                                print!("test");
                                 *votes.active_thread.lock().unwrap() = thread::spawn(move || {
                                     rs_clone.send((String::from("Voting session started!"), String::from(cmd.channel.as_str()))).unwrap();
                                     VoteObj::start_vote(votes_clone);
@@ -306,9 +306,28 @@ impl Arabot {
                             }
                             votes.active_thread.lock().unwrap().thread().unpark();
                         }
-                        "extend" => {}
+                        "extend" => {
+                            if regex_collection.time_regex.is_match(&cmd.text) {
+                                let mut response = "";
+                                votes.time_left.lock().unwrap().push(convert_string_int(String::from(regex_collection.time_regex.find(&cmd.text).unwrap().as_str())));
+                                if !*votes.has_started.lock().unwrap() {
+                                    response = "The voting session has been reopened!";
+                                    let votes_clone = Arc::clone(&votes);
+                                    let rs_clone = rs.clone();
+                                    rs.send((String::from(response), String::from(cmd.channel.as_str()))).unwrap();
+                                    *votes.active_thread.lock().unwrap() = thread::spawn(move || {
+                                        VoteObj::start_vote(votes_clone);
+                                        rs_clone.send((String::from("Voting session ended!"), String::from(cmd.channel.as_str()))).unwrap();
+                                    });
+
+                                } else {
+                                    response = "The voting session has been extended!";
+                                    rs.send((String::from(response), String::from(cmd.channel.as_str()))).unwrap();
+                                }
+                            }
+                        }
                         "remember" => {}
-                        "mytime" => {}
+                        "myvote" => {}
                         "add" => {}
                         "vote" => {
                             //TODO: add the use of the hashmap with votes
@@ -501,9 +520,17 @@ impl Arabot {
         regex::Regex::new(&command_reg).unwrap()
     }
 }
-fn convert_int_string(time: u64) -> String {
-    String::from("")
-}
 fn convert_string_int(time: String) -> u64 {
-    20
+    let working_string = time.trim().split(":");
+    let time_vec: Vec<&str> = working_string.collect::<Vec<&str>>().into_iter().rev().collect();
+    println!("{}", time_vec[0]);
+    let mut time_seconds = 0;
+    for i in 0..time_vec.len() {
+        let local_time: u64 = time_vec[i].parse().unwrap();
+        let pow_val: u32 = i.try_into().unwrap();
+        println!("{}, {}", pow_val, local_time);
+        time_seconds = time_seconds + local_time * (60u64.pow(pow_val));
+    }
+    println!("{}", time_seconds);
+    time_seconds
 }

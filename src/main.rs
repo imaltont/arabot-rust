@@ -68,6 +68,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
         0,
     );
+    let extend = ChatCommand::new(
+        String::from("extend"),
+        Elevation::Moderator,
+        Box::new(|_user, _text| String::from("Extends the available time for a voting session")),
+        String::from(
+            "Extends the remaining time of a voting session. You can extend it with a name if several are already running, the time in seconds or hour, minutes and/or seconds",
+        ),
+        0,
+    );
     let evote = ChatCommand::new(
         String::from("evote"),
         Elevation::Moderator,
@@ -103,6 +112,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     commands.add_command(slots, String::from(bot.command_symbol.as_str()));
     commands.add_command(vote, String::from(bot.command_symbol.as_str()));
     commands.add_command(svote, String::from(bot.command_symbol.as_str()));
+    commands.add_command(extend, String::from(bot.command_symbol.as_str()));
     commands.add_command(evote, String::from(bot.command_symbol.as_str()));
     commands.add_command(help, String::from(bot.command_symbol.as_str()));
     commands.add_command(bee, String::from(bot.command_symbol.as_str()));

@@ -7,6 +7,7 @@ pub struct VoteObj {
     pub has_started: Mutex<bool>,
     pub time_left: Mutex<Vec<u64>>,
     pub times: Mutex<HashMap<String, u64>>,
+    //pub times_str: Mutex<HashMap<String, String>>,
     pub has_local_file: bool,
     pub active_thread: Mutex<thread::JoinHandle<()>>,
     pub location: String,
@@ -113,7 +114,7 @@ impl VoteObj {
 }
 impl VoteRegex {
     pub fn new() -> VoteRegex {
-        let time_regex = regex::Regex::new(r"(((\d+:)?[0-5]\d:)[0-5]\d\b)| \d+$").unwrap();
+        let time_regex = regex::Regex::new(r"(((\d+:)?[0-5]?\d:)[0-5]\d\b)| \d+$").unwrap();
         let file_regex = regex::Regex::new(r"(?:\d )(\w*)").unwrap();
         let vote_regex = regex::Regex::new(r"(?:vote )(\w*)(?: \d)").unwrap();
         let help_regex = regex::Regex::new(r"(?:help )(\w+\b)").unwrap();
