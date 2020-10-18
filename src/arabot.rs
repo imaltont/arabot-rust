@@ -301,10 +301,6 @@ impl Arabot {
                             }
                         }
                         "evote" => {
-                            //while votes.times.lock().unwrap().len() != 0 {
-                                //votes.time_left.lock().unwrap().pop();
-                                //println!("HOGA");
-                            //}
                             while *votes.has_started.lock().unwrap() {
                                 votes.active_thread.lock().unwrap().thread().unpark();
                             }
@@ -331,7 +327,11 @@ impl Arabot {
                         }
                         "remember" => {}
                         "myvote" => {
-                            rs.send((format!("{} voted on {}", &cmd.user, String::from(&votes.times.lock().unwrap()[&cmd.user])), String::from(cmd.channel.as_str()))).unwrap();
+                            if votes.times.lock().unwrap().contains_key(&cmd.user){
+                                rs.send((format!("{} voted on {}", &cmd.user, String::from(&votes.times.lock().unwrap()[&cmd.user])), String::from(cmd.channel.as_str()))).unwrap();
+                            } else {
+                                rs.send((format!("{}, you have not voted in this session", &cmd.user), String::from(cmd.channel.as_str()))).unwrap();
+                            }
                         }
                         "add" => {} //for adding new commands
                         "vote" => {
@@ -528,14 +528,11 @@ impl Arabot {
 fn convert_string_int(time: String) -> u64 {
     let working_string = time.trim().split(":");
     let time_vec: Vec<&str> = working_string.collect::<Vec<&str>>().into_iter().rev().collect();
-    println!("{}", time_vec[0]);
     let mut time_seconds = 0;
     for i in 0..time_vec.len() {
         let local_time: u64 = time_vec[i].parse().unwrap();
         let pow_val: u32 = i.try_into().unwrap();
-        println!("{}, {}", pow_val, local_time);
         time_seconds = time_seconds + local_time * (60u64.pow(pow_val));
     }
-    println!("{}", time_seconds);
     time_seconds
 }
