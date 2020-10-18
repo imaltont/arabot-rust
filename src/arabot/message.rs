@@ -6,7 +6,7 @@ use std::{thread, time};
 pub struct VoteObj {
     pub has_started: Mutex<bool>,
     pub time_left: Mutex<Vec<u64>>,
-    pub times: Mutex<HashMap<String, u64>>,
+    pub times: Mutex<HashMap<String, String>>,
     //pub times_str: Mutex<HashMap<String, String>>,
     pub has_local_file: bool,
     pub active_thread: Mutex<thread::JoinHandle<()>>,
@@ -70,7 +70,7 @@ impl VoteObj {
     pub fn new(duration: u64, location: String) -> Arc<VoteObj> {
         let mut has_local_file = false;
         let mut time_left: Vec<u64> = Vec::new();
-        let mut local_thread = thread::spawn(move || {});
+        let local_thread = thread::spawn(move || {});
         if location.as_str() != "" {
             has_local_file = true;
         }
@@ -87,13 +87,14 @@ impl VoteObj {
     pub fn start_vote(current_session: Arc<VoteObj>) {
         *current_session.has_started.lock().unwrap() = true;
         while current_session.time_left.lock().unwrap().len() != 0 {
+            let waiting_time = current_session.time_left.lock().unwrap().pop().unwrap();
             thread::park_timeout(time::Duration::from_secs(
-                current_session.time_left.lock().unwrap().pop().unwrap(),
+                waiting_time,
             ));
         }
         *current_session.has_started.lock().unwrap() = false;
     }
-    pub fn add_vote(&self, username: String, time: u64) {
+    pub fn add_vote(&self, username: String, time: String) {
         //covers both adding new times and updating existing ones
         if self.times.lock().unwrap().contains_key(&username) {
             self.times.lock().unwrap().remove(&username);

@@ -301,10 +301,13 @@ impl Arabot {
                             }
                         }
                         "evote" => {
-                            while votes.times.lock().unwrap().len() != 0 {
-                                votes.time_left.lock().unwrap().pop();
+                            //while votes.times.lock().unwrap().len() != 0 {
+                                //votes.time_left.lock().unwrap().pop();
+                                //println!("HOGA");
+                            //}
+                            while *votes.has_started.lock().unwrap() {
+                                votes.active_thread.lock().unwrap().thread().unpark();
                             }
-                            votes.active_thread.lock().unwrap().thread().unpark();
                         }
                         "extend" => {
                             if regex_collection.time_regex.is_match(&cmd.text) {
@@ -327,8 +330,10 @@ impl Arabot {
                             }
                         }
                         "remember" => {}
-                        "myvote" => {}
-                        "add" => {}
+                        "myvote" => {
+                            rs.send((format!("{} voted on {}", &cmd.user, String::from(&votes.times.lock().unwrap()[&cmd.user])), String::from(cmd.channel.as_str()))).unwrap();
+                        }
+                        "add" => {} //for adding new commands
                         "vote" => {
                             //TODO: add the use of the hashmap with votes
                             //TODO: add regex to recognize where to put the vote
@@ -342,7 +347,7 @@ impl Arabot {
                                         .as_str();
                                     votes.add_vote(
                                         String::from(cmd.user.as_str()),
-                                        convert_string_int(String::from(time)),
+                                        String::from(time),
                                     );
                                     rs.send((
                                         format!("{} voted on {}", cmd.user, time),
