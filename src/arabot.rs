@@ -12,7 +12,7 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
-use std::convert::TryInto;
+use std::{cmp, convert::TryInto};
 
 pub struct CommandHash {
     pub commands: HashMap<String, ChatCommand>,
@@ -270,8 +270,8 @@ impl Arabot {
                             .send((format!("Hello, {}", cmd.user), cmd.channel))
                             .unwrap(),
                         "svote" => {
-                            if regex_collection.time_regex.is_match(&cmd.text) {
-                                let time = convert_string_int(String::from(
+                            if !*votes.has_started.lock().unwrap() && regex_collection.time_regex.is_match(&cmd.text) {
+                                let time = convert_string_int(&String::from(
                                     regex_collection
                                         .time_regex
                                         .find(&cmd.text)
@@ -308,7 +308,7 @@ impl Arabot {
                         "extend" => {
                             if regex_collection.time_regex.is_match(&cmd.text) {
                                 let mut response = "";
-                                votes.time_left.lock().unwrap().push(convert_string_int(String::from(regex_collection.time_regex.find(&cmd.text).unwrap().as_str())));
+                                votes.time_left.lock().unwrap().push(convert_string_int(&String::from(regex_collection.time_regex.find(&cmd.text).unwrap().as_str())));
                                 if !*votes.has_started.lock().unwrap() {
                                     response = "The voting session has been reopened!";
                                     let votes_clone = Arc::clone(&votes);
@@ -326,6 +326,25 @@ impl Arabot {
                             }
                         }
                         "remember" => {}
+                        "result" => {
+                            //TODO: replace 3 with variable from config file.
+                            if regex_collection.time_regex.is_match(&cmd.text) {
+                                let result_time = convert_string_int(&String::from(regex_collection.time_regex.find(&cmd.text).unwrap().as_str()));
+                                let num_show = cmp::min(votes.times.lock().unwrap().len(), 3);
+                                let mut time_vector: Vec<(u64, String)> = Vec::new();
+
+                                for (username, time) in &*votes.times.lock().unwrap() {
+                                    time_vector.push((convert_string_int(time), String::from(username)));
+                                }
+
+                                time_vector.sort_by_key(|time| time.0);
+                                rs.send((format!("{} placeholder winner message", time_vector[0].1), String::from(cmd.channel.as_str()))).unwrap();
+
+                                for i in 0..num_show {
+                                    rs.send((format!("{}) {} {}", i+1, time_vector[i].1, time_vector[i].0), String::from(cmd.channel.as_str()))).unwrap();
+                                }
+                            }
+                        }
                         "myvote" => {
                             if votes.times.lock().unwrap().contains_key(&cmd.user){
                                 rs.send((format!("{} voted on {}", &cmd.user, String::from(&votes.times.lock().unwrap()[&cmd.user])), String::from(cmd.channel.as_str()))).unwrap();
@@ -525,7 +544,7 @@ impl Arabot {
         regex::Regex::new(&command_reg).unwrap()
     }
 }
-fn convert_string_int(time: String) -> u64 {
+fn convert_string_int(time: &String) -> u64 {
     let working_string = time.trim().split(":");
     let time_vec: Vec<&str> = working_string.collect::<Vec<&str>>().into_iter().rev().collect();
     let mut time_seconds = 0;
