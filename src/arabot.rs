@@ -366,7 +366,7 @@ impl Arabot {
                                         .as_str();
                                     votes.add_vote(
                                         String::from(cmd.user.as_str()),
-                                        String::from(time),
+                                        String::from(time.trim()),
                                     );
                                     rs.send((
                                         format!("{} voted on {}", cmd.user, time),

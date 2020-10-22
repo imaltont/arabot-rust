@@ -1,7 +1,9 @@
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::{thread, time};
+use std::{thread, time, fs::OpenOptions, io::Write};
+use std::{path::Path, fs};
+use fs::File;
 
 pub struct VoteObj {
     pub has_started: Mutex<bool>,
@@ -70,9 +72,12 @@ impl VoteObj {
     pub fn new(duration: u64, location: String) -> Arc<VoteObj> {
         let mut has_local_file = false;
         let mut time_left: Vec<u64> = Vec::new();
+        let mut file_name = String::from("");
         let local_thread = thread::spawn(move || {});
         if location.as_str() != "" {
             has_local_file = true;
+            file_name = location + ".csv";
+            fs::write(String::from(&file_name),"Name;Result\n");
         }
         time_left.push(duration);
         Arc::new(VoteObj {
@@ -81,7 +86,7 @@ impl VoteObj {
             times: Mutex::new(HashMap::new()),
             has_local_file: has_local_file,
             active_thread: Mutex::new(local_thread),
-            location: location,
+            location: file_name,
         })
     }
     pub fn start_vote(current_session: Arc<VoteObj>) {
@@ -100,22 +105,30 @@ impl VoteObj {
             self.times.lock().unwrap().remove(&username);
             self.times.lock().unwrap().insert(username, time);
             if self.has_local_file {
-                self.rewite_sheet();
+                self.rewrite_sheet();
             }
         } else {
-            self.times.lock().unwrap().insert(username, time);
+            self.times.lock().unwrap().insert(String::from(&username), String::from(&time));
             if self.has_local_file {
-                self.update_sheet();
+                self.update_sheet(username, time);
             }
         }
     }
-    pub fn update_sheet(&self) {}
-    pub fn rewite_sheet(&self) {}
+    pub fn update_sheet(&self, username: String, time: String) {
+        let path = Path::new(&self.location);
+
+        let result_file = OpenOptions::new().read(true).append(true).open(&path);
+
+        if let Err(e) = writeln!(result_file.unwrap(), "{};{}", username, time) {
+            eprintln!("Couldn't write to file: {}", e);
+        }
+    }
+    pub fn rewrite_sheet(&self) {}
     pub fn read_sheet(&self) {}
 }
 impl VoteRegex {
     pub fn new() -> VoteRegex {
-        let time_regex = regex::Regex::new(r"(((\d+:)?[0-5]?\d:)[0-5]\d\b)| \d+$").unwrap();
+        let time_regex = regex::Regex::new(r"(((\d+:)?[0-5]?\d:)[0-5]\d( |$))| \d+( |$)").unwrap();
         let file_regex = regex::Regex::new(r"(?:\d )(\w*)").unwrap();
         let vote_regex = regex::Regex::new(r"(?:vote )(\w*)(?: \d)").unwrap();
         let help_regex = regex::Regex::new(r"(?:help )(\w+\b)").unwrap();
