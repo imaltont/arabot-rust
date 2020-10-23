@@ -30,6 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hello = ChatCommand::new(
         String::from("hello"),
         Elevation::Viewer,
+        String::from("Hello"),
         Box::new(|_user, _text| String::from("Hello")),
         String::from("Says hello"),
         0,
@@ -37,6 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sluts = ChatCommand::new(
         String::from("sluts"),
         Elevation::Viewer,
+        String::from("SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm"),
         Box::new(|_user, _text| {
             String::from("SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm SkopsGasm")
         }),
@@ -46,6 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bee = ChatCommand::new(
         String::from("bee"),
         Elevation::Viewer,
+        String::from("Thex will do fridge % in ∞ days"),
         Box::new(|_user, _text| String::from("Thex will do fridge % in ∞ days")),
         String::from("Gives random bee facts"),
         0,
@@ -53,6 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let vote = ChatCommand::new(
         String::from("vote"),
         Elevation::Viewer,
+        String::from("Registers a vote"),
         Box::new(|_user, _text| String::from("Registers a vote")),
         String::from(
             "Lets you register a vote while one is active. You can vote with h:mm:ss or a number",
@@ -62,15 +66,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let myvote = ChatCommand::new(
         String::from("myvote"),
         Elevation::Viewer,
+        String::from("Returns what you voted for"),
         Box::new(|_user, _text| String::from("Returns what you voted for")),
-        String::from(
-            "Tells you the time or number you have voted for.",
-        ),
+        String::from("Tells you the time or number you have voted for."),
         0,
     );
     let svote = ChatCommand::new(
         String::from("svote"),
         Elevation::Moderator,
+        String::from("Starts a vote"),
         Box::new(|_user, _text| String::from("Starts a vote")),
         String::from(
             "Starts a new voting session. You can start it with a name if several are already running, the time in seconds or hour, minutes and/or seconds, and you can give it a name for saving the votes and results in a csv file",
@@ -80,6 +84,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let extend = ChatCommand::new(
         String::from("extend"),
         Elevation::Moderator,
+        String::from("Extends the available time for a voting session"),
         Box::new(|_user, _text| String::from("Extends the available time for a voting session")),
         String::from(
             "Extends the remaining time of a voting session. You can extend it with a name if several are already running, the time in seconds or hour, minutes and/or seconds",
@@ -89,15 +94,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let evote = ChatCommand::new(
         String::from("evote"),
         Elevation::Moderator,
+        String::from("Ends a vote"),
         Box::new(|_user, _text| String::from("Ends a vote")),
-        String::from(
-            "Ends a voting session",
-        ),
+        String::from("Ends a voting session"),
         0,
     );
     let result = ChatCommand::new(
         String::from("result"),
         Elevation::Moderator,
+        String::from("Registers the result of the voting session"),
         Box::new(|_user, _text| String::from("Registers the result of the voting session")),
         String::from(
             "Registers the result of the voting session. Register the result with h:mm:ss or a single number",
@@ -107,13 +112,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let help = ChatCommand::new(
         String::from("help"),
         Elevation::Viewer,
-        Box::new(|_user, _text| String::from("Diaplays all available commands")),
+        String::from("Displays all available commands"),
+        Box::new(|_user, _text| String::from("Displays all available commands")),
         String::from("Displays all available commands, or specific use of a command if supplied."),
         0,
     );
     let slots = ChatCommand::new(
         String::from("slots"),
         Elevation::Viewer,
+        String::from("Rolls random emotes with a possibility to get a jackpot"),
         Box::new(|_user, _text| String::from("test")),
         String::from("Rolls random emotes with a possibility to get a jackpot"),
         0,
@@ -121,6 +128,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let specs = ChatCommand::new(
         String::from("specs"),
         Elevation::Viewer,
+        String::from("I dno, check the description."),
         Box::new(|_user, _text| String::from("I dno, check the description.")),
         String::from("Lists the specs"),
         0,

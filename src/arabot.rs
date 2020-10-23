@@ -134,6 +134,19 @@ impl Arabot {
         let arabot_symbol = Arc::new(String::from(self.command_symbol.as_str()));
         let cloned_arabot_symbol = Arc::clone(&arabot_symbol);
         let command_thread = thread::spawn(move || {
+            //create list of commands with automatic updates, spawn a thread per that will sleep
+            //until it's time to update
+            let mut update_commands: Vec<(String, String, u64)> = Vec::new();
+            for (_, command) in &commands.commands {
+                if command.repeat_interval > 0 {
+                    update_commands.push((
+                        String::from(&command.command),
+                        String::from(&command.response_message),
+                        command.repeat_interval,
+                    ));
+                }
+            }
+
             let mut command_reg = Regex::new(r"").unwrap();
             command_reg = Arabot::generate_regex(&commands.commands, &cloned_arabot_symbol);
             let mut bee_facts: [&str; 100] = [""; 100];
@@ -270,7 +283,9 @@ impl Arabot {
                             .send((format!("Hello, {}", cmd.user), cmd.channel))
                             .unwrap(),
                         "svote" => {
-                            if !*votes.has_started.lock().unwrap() && regex_collection.time_regex.is_match(&cmd.text) {
+                            if !*votes.has_started.lock().unwrap()
+                                && regex_collection.time_regex.is_match(&cmd.text)
+                            {
                                 let time = convert_string_int(&String::from(
                                     regex_collection
                                         .time_regex
@@ -294,9 +309,19 @@ impl Arabot {
                                 let votes_clone = Arc::clone(&votes);
                                 let rs_clone = rs.clone();
                                 *votes.active_thread.lock().unwrap() = thread::spawn(move || {
-                                    rs_clone.send((String::from("Voting session started!"), String::from(cmd.channel.as_str()))).unwrap();
+                                    rs_clone
+                                        .send((
+                                            String::from("Voting session started!"),
+                                            String::from(cmd.channel.as_str()),
+                                        ))
+                                        .unwrap();
                                     VoteObj::start_vote(votes_clone);
-                                    rs_clone.send((String::from("Voting session ended!"), String::from(cmd.channel.as_str()))).unwrap();
+                                    rs_clone
+                                        .send((
+                                            String::from("Voting session ended!"),
+                                            String::from(cmd.channel.as_str()),
+                                        ))
+                                        .unwrap();
                                 });
                             }
                         }
@@ -308,20 +333,41 @@ impl Arabot {
                         "extend" => {
                             if regex_collection.time_regex.is_match(&cmd.text) {
                                 let mut response = "";
-                                votes.time_left.lock().unwrap().push(convert_string_int(&String::from(regex_collection.time_regex.find(&cmd.text).unwrap().as_str())));
+                                votes.time_left.lock().unwrap().push(convert_string_int(
+                                    &String::from(
+                                        regex_collection
+                                            .time_regex
+                                            .find(&cmd.text)
+                                            .unwrap()
+                                            .as_str(),
+                                    ),
+                                ));
                                 if !*votes.has_started.lock().unwrap() {
                                     response = "The voting session has been reopened!";
                                     let votes_clone = Arc::clone(&votes);
                                     let rs_clone = rs.clone();
-                                    rs.send((String::from(response), String::from(cmd.channel.as_str()))).unwrap();
-                                    *votes.active_thread.lock().unwrap() = thread::spawn(move || {
-                                        VoteObj::start_vote(votes_clone);
-                                        rs_clone.send((String::from("Voting session ended!"), String::from(cmd.channel.as_str()))).unwrap();
-                                    });
-
+                                    rs.send((
+                                        String::from(response),
+                                        String::from(cmd.channel.as_str()),
+                                    ))
+                                    .unwrap();
+                                    *votes.active_thread.lock().unwrap() =
+                                        thread::spawn(move || {
+                                            VoteObj::start_vote(votes_clone);
+                                            rs_clone
+                                                .send((
+                                                    String::from("Voting session ended!"),
+                                                    String::from(cmd.channel.as_str()),
+                                                ))
+                                                .unwrap();
+                                        });
                                 } else {
                                     response = "The voting session has been extended!";
-                                    rs.send((String::from(response), String::from(cmd.channel.as_str()))).unwrap();
+                                    rs.send((
+                                        String::from(response),
+                                        String::from(cmd.channel.as_str()),
+                                    ))
+                                    .unwrap();
                                 }
                             }
                         }
@@ -329,27 +375,59 @@ impl Arabot {
                         "result" => {
                             //TODO: replace 3 with variable from config file.
                             if regex_collection.time_regex.is_match(&cmd.text) {
-                                let result_time = convert_string_int(&String::from(regex_collection.time_regex.find(&cmd.text).unwrap().as_str()));
+                                let result_time = convert_string_int(&String::from(
+                                    regex_collection
+                                        .time_regex
+                                        .find(&cmd.text)
+                                        .unwrap()
+                                        .as_str(),
+                                ));
                                 let num_show = cmp::min(votes.times.lock().unwrap().len(), 3);
                                 let mut time_vector: Vec<(u64, String)> = Vec::new();
 
                                 for (username, time) in &*votes.times.lock().unwrap() {
-                                    time_vector.push((convert_string_int(time), String::from(username)));
+                                    time_vector
+                                        .push((convert_string_int(time), String::from(username)));
                                 }
 
                                 time_vector.sort_by_key(|time| time.0);
-                                rs.send((format!("{} placeholder winner message", time_vector[0].1), String::from(cmd.channel.as_str()))).unwrap();
+                                rs.send((
+                                    format!("{} placeholder winner message", time_vector[0].1),
+                                    String::from(cmd.channel.as_str()),
+                                ))
+                                .unwrap();
 
                                 for i in 0..num_show {
-                                    rs.send((format!("{}) {} {}", i+1, time_vector[i].1, time_vector[i].0), String::from(cmd.channel.as_str()))).unwrap();
+                                    rs.send((
+                                        format!(
+                                            "{}) {} {}",
+                                            i + 1,
+                                            time_vector[i].1,
+                                            time_vector[i].0
+                                        ),
+                                        String::from(cmd.channel.as_str()),
+                                    ))
+                                    .unwrap();
                                 }
                             }
                         }
                         "myvote" => {
-                            if votes.times.lock().unwrap().contains_key(&cmd.user){
-                                rs.send((format!("{} voted on {}", &cmd.user, String::from(&votes.times.lock().unwrap()[&cmd.user])), String::from(cmd.channel.as_str()))).unwrap();
+                            if votes.times.lock().unwrap().contains_key(&cmd.user) {
+                                rs.send((
+                                    format!(
+                                        "{} voted on {}",
+                                        &cmd.user,
+                                        String::from(&votes.times.lock().unwrap()[&cmd.user])
+                                    ),
+                                    String::from(cmd.channel.as_str()),
+                                ))
+                                .unwrap();
                             } else {
-                                rs.send((format!("{}, you have not voted in this session", &cmd.user), String::from(cmd.channel.as_str()))).unwrap();
+                                rs.send((
+                                    format!("{}, you have not voted in this session", &cmd.user),
+                                    String::from(cmd.channel.as_str()),
+                                ))
+                                .unwrap();
                             }
                         }
                         "add" => {} //for adding new commands
@@ -546,7 +624,11 @@ impl Arabot {
 }
 fn convert_string_int(time: &String) -> u64 {
     let working_string = time.trim().split(":");
-    let time_vec: Vec<&str> = working_string.collect::<Vec<&str>>().into_iter().rev().collect();
+    let time_vec: Vec<&str> = working_string
+        .collect::<Vec<&str>>()
+        .into_iter()
+        .rev()
+        .collect();
     let mut time_seconds = 0;
     for i in 0..time_vec.len() {
         let local_time: u64 = time_vec[i].parse().unwrap();

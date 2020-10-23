@@ -1,9 +1,9 @@
+use fs::File;
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::{thread, time, fs::OpenOptions, io::Write};
-use std::{path::Path, fs};
-use fs::File;
+use std::{fs, path::Path};
+use std::{fs::OpenOptions, io::Write, thread, time};
 
 pub struct VoteObj {
     pub has_started: Mutex<bool>,
@@ -42,9 +42,10 @@ pub enum Elevation {
 pub struct ChatCommand {
     pub command: String,
     pub elevation: Elevation,
+    pub response_message: String,
     pub response: Box<dyn FnMut(String, String) -> String>,
     pub help: String,
-    pub repeat_interval: i64,
+    pub repeat_interval: u64,
 }
 
 unsafe impl Send for ChatCommand {}
@@ -54,13 +55,15 @@ impl ChatCommand {
     pub fn new(
         c: String,
         e: Elevation,
+        rm: String,
         r: Box<dyn FnMut(String, String) -> String>,
         h: String,
-        ri: i64,
+        ri: u64,
     ) -> ChatCommand {
         ChatCommand {
             command: c,
             elevation: e,
+            response_message: rm,
             response: r,
             help: h,
             repeat_interval: ri,
@@ -77,7 +80,7 @@ impl VoteObj {
         if location.as_str() != "" {
             has_local_file = true;
             file_name = location + ".csv";
-            let _ = fs::write(String::from(&file_name),"Name;Result\n");
+            let _ = fs::write(String::from(&file_name), "Name;Result\n");
         }
         time_left.push(duration);
         Arc::new(VoteObj {
@@ -93,9 +96,7 @@ impl VoteObj {
         *current_session.has_started.lock().unwrap() = true;
         while current_session.time_left.lock().unwrap().len() != 0 {
             let waiting_time = current_session.time_left.lock().unwrap().pop().unwrap();
-            thread::park_timeout(time::Duration::from_secs(
-                waiting_time,
-            ));
+            thread::park_timeout(time::Duration::from_secs(waiting_time));
         }
         *current_session.has_started.lock().unwrap() = false;
     }
@@ -108,7 +109,10 @@ impl VoteObj {
                 self.rewrite_sheet();
             }
         } else {
-            self.times.lock().unwrap().insert(String::from(&username), String::from(&time));
+            self.times
+                .lock()
+                .unwrap()
+                .insert(String::from(&username), String::from(&time));
             if self.has_local_file {
                 self.update_sheet(username, time);
             }
@@ -124,10 +128,10 @@ impl VoteObj {
         }
     }
     pub fn rewrite_sheet(&self) {
-        let _ = fs::write(String::from(&self.location),"Name;Result\n");
+        let _ = fs::write(String::from(&self.location), "Name;Result\n");
 
         let path = Path::new(&self.location);
-        for (username, time) in &*self.times.lock().unwrap(){
+        for (username, time) in &*self.times.lock().unwrap() {
             let result_file = OpenOptions::new().read(true).append(true).open(&path);
             if let Err(e) = writeln!(&result_file.unwrap(), "{};{}", username, time) {
                 eprintln!("Couldn't write to file: {}", e);
