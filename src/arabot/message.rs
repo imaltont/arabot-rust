@@ -77,7 +77,7 @@ impl VoteObj {
         if location.as_str() != "" {
             has_local_file = true;
             file_name = location + ".csv";
-            fs::write(String::from(&file_name),"Name;Result\n");
+            let _ = fs::write(String::from(&file_name),"Name;Result\n");
         }
         time_left.push(duration);
         Arc::new(VoteObj {
@@ -123,7 +123,17 @@ impl VoteObj {
             eprintln!("Couldn't write to file: {}", e);
         }
     }
-    pub fn rewrite_sheet(&self) {}
+    pub fn rewrite_sheet(&self) {
+        let _ = fs::write(String::from(&self.location),"Name;Result\n");
+
+        let path = Path::new(&self.location);
+        for (username, time) in &*self.times.lock().unwrap(){
+            let result_file = OpenOptions::new().read(true).append(true).open(&path);
+            if let Err(e) = writeln!(&result_file.unwrap(), "{};{}", username, time) {
+                eprintln!("Couldn't write to file: {}", e);
+            }
+        }
+    }
     pub fn read_sheet(&self) {}
 }
 impl VoteRegex {
