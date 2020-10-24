@@ -133,17 +133,24 @@ impl Arabot {
 
         let arabot_symbol = Arc::new(String::from(self.command_symbol.as_str()));
         let cloned_arabot_symbol = Arc::clone(&arabot_symbol);
+        let repeat_channel = self.twitch_channel.clone();
         let command_thread = thread::spawn(move || {
             //create list of commands with automatic updates, spawn a thread per that will sleep
             //until it's time to update
-            let mut update_commands: Vec<(String, String, u64)> = Vec::new();
             for (_, command) in &commands.commands {
                 if command.repeat_interval > 0 {
-                    update_commands.push((
-                        String::from(&command.command),
-                        String::from(&command.response_message),
-                        command.repeat_interval,
-                    ));
+                    let repeat_interval = command.repeat_interval;
+                    let repeat_message = command.response_message.clone();
+                    let repeat_channel_clone = repeat_channel.clone();
+                    if !command.command.contains("svote"){
+                        let rs_clone = rs.clone();
+                        let _ = thread::spawn(move || {
+                            loop {
+                                rs_clone.send((format!("{}", repeat_message), repeat_channel_clone.to_owned())).unwrap();
+                                thread::sleep(time::Duration::from_secs(repeat_interval));
+                            }
+                        });
+                    }
                 }
             }
 
@@ -305,7 +312,20 @@ impl Arabot {
                                             .as_str(),
                                     );
                                 }
+                                let rs_clone = rs.clone();
                                 votes = VoteObj::new(time, location);
+                                let votes_clone = Arc::clone(&votes);
+                                let repeat_message = commands.commands.get_mut(command).unwrap().response_message.clone();
+                                let repeat_channel_clone = repeat_channel.clone();
+                                let repeat_interval = commands.commands.get_mut(command).unwrap().repeat_interval;
+                                let _ = thread::spawn(move || {
+                                    loop {
+                                        if *votes_clone.has_started.lock().unwrap(){
+                                            rs_clone.send((format!("{}", repeat_message), repeat_channel_clone.to_owned())).unwrap();
+                                        }
+                                        thread::sleep(time::Duration::from_secs(repeat_interval));
+                                    }
+                                });
                                 let votes_clone = Arc::clone(&votes);
                                 let rs_clone = rs.clone();
                                 *votes.active_thread.lock().unwrap() = thread::spawn(move || {
@@ -383,11 +403,11 @@ impl Arabot {
                                         .as_str(),
                                 ));
                                 let num_show = cmp::min(votes.times.lock().unwrap().len(), 3);
-                                let mut time_vector: Vec<(u64, String)> = Vec::new();
+                                let mut time_vector: Vec<(u64, String, String)> = Vec::new();
 
                                 for (username, time) in &*votes.times.lock().unwrap() {
                                     time_vector
-                                        .push((convert_string_int(time), String::from(username)));
+                                        .push((convert_string_int(time), String::from(time), String::from(username)));
                                 }
 
                                 time_vector.sort_by_key(|time| time.0);
@@ -402,8 +422,8 @@ impl Arabot {
                                         format!(
                                             "{}) {} {}",
                                             i + 1,
-                                            time_vector[i].1,
-                                            time_vector[i].0
+                                            time_vector[i].2,
+                                            time_vector[i].1
                                         ),
                                         String::from(cmd.channel.as_str()),
                                     ))
@@ -597,7 +617,7 @@ impl Arabot {
         let answer_thread = thread::spawn(move || loop {
             let (response, channel) = rr.recv().unwrap();
             cloned_client.send_privmsg(&channel, &response).unwrap();
-            thread::sleep(time::Duration::from_millis(tmp_wait));
+            thread::sleep(time::Duration::from_secs(tmp_wait));
         });
 
         println!("Connected to {}", self.twitch_channel);

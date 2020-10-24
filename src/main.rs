@@ -21,8 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //Runtime::new().expect("Error").block_on(bot.start_bot());
     let mut commands = Box::new(CommandHash::new());
     let mut emotes: Vec<String> = Vec::new();
-    let emote_file = File::open("emotes.txt")?;
-    let reader = BufReader::new(emote_file);
+    let emote_file = File::open("emotes.txt")?; let reader = BufReader::new(emote_file);
     for line in reader.lines() {
         emotes.push(line.unwrap());
     }
@@ -133,6 +132,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         String::from("Lists the specs"),
         0,
     );
+    let arttles = ChatCommand::new(
+        String::from("arttles"),
+        Elevation::Viewer,
+        String::from("https://www.twitch.tv/thextera_/clip/MoralEndearingRavenNomNom"),
+        Box::new(|_user, _text| String::from("https://www.twitch.tv/thextera_/clip/MoralEndearingRavenNomNom")),
+        String::from("Lists the specs"),
+        0,
+    );
     commands.add_command(hello, String::from(bot.command_symbol.as_str()));
     commands.add_command(sluts, String::from(bot.command_symbol.as_str()));
     commands.add_command(slots, String::from(bot.command_symbol.as_str()));
@@ -145,6 +152,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     commands.add_command(help, String::from(bot.command_symbol.as_str()));
     commands.add_command(bee, String::from(bot.command_symbol.as_str()));
     commands.add_command(specs, String::from(bot.command_symbol.as_str()));
+    commands.add_command(arttles, String::from(bot.command_symbol.as_str()));
     let w = bot.start_bot(commands, emotes);
     w.await.unwrap();
     Ok(())
