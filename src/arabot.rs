@@ -295,7 +295,7 @@ impl Arabot {
                                 );
                                 let num_show =
                                     cmp::min(votes.times.lock().unwrap().len(), num_winners);
-                                let mut time_vector: Vec<(u64, String, String)> = Vec::new();
+                                let mut time_vector: Vec<(i64, String, String)> = Vec::new();
 
                                 for (username, time) in &*votes.times.lock().unwrap() {
                                     time_vector.push((
@@ -308,14 +308,14 @@ impl Arabot {
                                     continue;
                                 }
 
-                                time_vector.sort_by_key(|time| time.0);
-                                let winning_message = if time_vector[0].0 == winning_time {
+                                time_vector.sort_by_key(|time| time.0.abs());
+                                let winning_message = if time_vector[0].0 == 0 {
                                     perfect_guess_message.clone()
                                 } else {
                                     winner_message.clone()
                                 };
                                 rs.send((
-                                    format!("{} {}", time_vector[0].2, winner_message),
+                                    format!("{} {}", time_vector[0].2, winning_message),
                                     String::from(cmd.channel.as_str()),
                                 ))
                                 .unwrap();
@@ -538,18 +538,18 @@ impl Arabot {
         regex::Regex::new(&command_reg).unwrap()
     }
 }
-fn convert_string_int(time: &String) -> u64 {
+fn convert_string_int(time: &String) -> i64 {
     let working_string = time.trim().split(":");
     let time_vec: Vec<&str> = working_string
         .collect::<Vec<&str>>()
         .into_iter()
         .rev()
         .collect();
-    let mut time_seconds = 0;
+    let mut time_seconds: i64 = 0;
     for i in 0..time_vec.len() {
-        let local_time: u64 = time_vec[i].parse().unwrap();
+        let local_time: i64 = time_vec[i].parse().unwrap();
         let pow_val: u32 = i.try_into().unwrap();
-        time_seconds = time_seconds + local_time * (60u64.pow(pow_val));
+        time_seconds = time_seconds + local_time * (60i64.pow(pow_val));
     }
     time_seconds
 }

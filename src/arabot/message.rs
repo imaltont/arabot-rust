@@ -7,7 +7,7 @@ use std::{fs::OpenOptions, io::Write, thread, time};
 
 pub struct VoteObj {
     pub has_started: Mutex<bool>,
-    pub time_left: Mutex<Vec<u64>>,
+    pub time_left: Mutex<Vec<i64>>,
     pub times: Mutex<HashMap<String, String>>,
     //pub times_str: Mutex<HashMap<String, String>>,
     pub has_local_file: bool,
@@ -72,9 +72,9 @@ impl ChatCommand {
 }
 
 impl VoteObj {
-    pub fn new(duration: u64, location: String) -> Arc<VoteObj> {
+    pub fn new(duration: i64, location: String) -> Arc<VoteObj> {
         let mut has_local_file = false;
-        let mut time_left: Vec<u64> = Vec::new();
+        let mut time_left: Vec<i64> = Vec::new();
         let mut file_name = String::from("");
         let local_thread = thread::spawn(move || {});
         if location.as_str() != "" {
@@ -96,7 +96,7 @@ impl VoteObj {
         *current_session.has_started.lock().unwrap() = true;
         while current_session.time_left.lock().unwrap().len() != 0 {
             let waiting_time = current_session.time_left.lock().unwrap().pop().unwrap();
-            thread::park_timeout(time::Duration::from_secs(waiting_time));
+            thread::park_timeout(time::Duration::from_secs(waiting_time as u64));
         }
         *current_session.has_started.lock().unwrap() = false;
     }
