@@ -11,7 +11,7 @@ use rand::prelude::*;
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::mpsc::channel;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 use std::{cmp, convert::TryInto};
 
 pub struct CommandHash {
@@ -20,7 +20,7 @@ pub struct CommandHash {
 
 impl CommandHash {
     pub fn new() -> CommandHash {
-        let mut commands = HashMap::<String, ChatCommand>::new();
+        let commands = HashMap::<String, ChatCommand>::new();
         CommandHash { commands: commands }
     }
     pub fn add_command(&mut self, new_command: ChatCommand, command_symbol: String) {
@@ -51,8 +51,8 @@ impl Arabot {
         command_symbol: String,
         message_wait: u64,
     ) -> Arabot {
-        let mut m: Vec<ChatMessage> = Vec::new();
-        let mut a: Vec<Reply> = Vec::new();
+        let m: Vec<ChatMessage> = Vec::new();
+        let a: Vec<Reply> = Vec::new();
         let tc = String::from(&twitch_channel);
         let mut hash = String::from("#");
         hash.push_str(&tc);
@@ -80,9 +80,12 @@ impl Arabot {
         &self,
         commands: Box<CommandHash>,
         emote_list: Vec<String>,
+        num_winners: usize,
+        winner_message: String,
+        perfect_guess_message: String
     ) -> Result<(), Error> {
         let mut commands = Box::new(commands);
-        let mut ongoing_votes: HashMap<String, VoteObj> = HashMap::new();
+        let ongoing_votes: HashMap<String, VoteObj> = HashMap::new();
         let regex_collection = VoteRegex::new();
         let irc_client_config = client::data::config::Config {
             nickname: Some(String::from(&self.name)),
@@ -275,24 +278,26 @@ impl Arabot {
                         "result" => {
                             //TODO: replace 3 with variable from config file.
                             if regex_collection.time_regex.is_match(&cmd.text) {
-                                let result_time = convert_string_int(&String::from(
-                                    regex_collection
-                                        .time_regex
-                                        .find(&cmd.text)
-                                        .unwrap()
-                                        .as_str(),
-                                ));
-                                let num_show = cmp::min(votes.times.lock().unwrap().len(), 3);
+                                let winning_time = convert_string_int(&regex_collection.time_regex.find(&cmd.text).unwrap().as_str().to_string());
+                                let num_show = cmp::min(votes.times.lock().unwrap().len(), num_winners);
                                 let mut time_vector: Vec<(u64, String, String)> = Vec::new();
 
                                 for (username, time) in &*votes.times.lock().unwrap() {
                                     time_vector
-                                        .push((convert_string_int(time), String::from(time), String::from(username)));
+                                        .push((convert_string_int(time)-winning_time, String::from(time), String::from(username)));
+                                }
+                                if time_vector.len() == 0 {
+                                    continue;
                                 }
 
                                 time_vector.sort_by_key(|time| time.0);
+                                let winning_message = if time_vector[0].0 == winning_time {
+                                    perfect_guess_message.clone()
+                                } else {
+                                    winner_message.clone()
+                                };
                                 rs.send((
-                                    format!("{} placeholder winner message", time_vector[0].1),
+                                    format!("{} {}", time_vector[0].2, winner_message),
                                     String::from(cmd.channel.as_str()),
                                 ))
                                 .unwrap();
@@ -490,7 +495,7 @@ impl Arabot {
         let answer_thread = thread::spawn(move || loop {
             let (response, channel) = rr.recv().unwrap();
             cloned_client.send_privmsg(&channel, &response).unwrap();
-            thread::sleep(time::Duration::from_secs(tmp_wait));
+            thread::sleep(time::Duration::from_millis(tmp_wait));
         });
 
         println!("Connected to {}", self.twitch_channel);

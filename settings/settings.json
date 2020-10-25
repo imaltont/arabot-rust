@@ -1,0 +1,23 @@
+{
+    "channel": "imaltont",
+    "command_prefix": "!",
+    "message_delay": "Viewer",
+    "winner_message": "placeholder winner message",
+    "perfect_guess_message": "placeholder perfect guess",
+    "number_of_results_shown": 3,
+    "vote_save_location": "./results/",
+    "command_location": "./settings/commands.json",
+    "slots_emotes": [
+        "RayNon",
+        "FeelsRayMan",
+        "FeelsCrayMan",
+        "greenBoi",
+        "redBoi",
+        "SkopsGasm",
+        "ThexTree",
+        "ThexFarm",
+        "RayHumph",
+        "Thex6k"
+
+    ]
+}

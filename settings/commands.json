@@ -1,0 +1,94 @@
+{
+    "commands": [
+        {
+            "name": "example",
+            "active": false,
+            "elevation": "Viewer",
+            "reminder_message": "This will get updated periodically if active",
+            "response": "Response for custom messages, not applicable for built in commands",
+            "help": "Response to !help command",
+            "reminder_time": 0
+        },
+        {
+            "name": "hello",
+            "active": true,
+            "elevation": "Viewer",
+            "reminder_message": "Hello chat!",
+            "response": "Hello user!",
+            "help": "Says hello to the user that triggered the command",
+            "reminder_time": 0
+        },
+        {
+            "name": "slots",
+            "active": true,
+            "elevation": "Viewer",
+            "reminder_message": "Gamble nothing to see if you get a jackpot",
+            "response": "Gamble nothing to see if you get a jackpot",
+            "help": "Roll 3 random emotes and see if you get a jackpot",
+            "reminder_time": 0
+        },
+        {
+            "name": "svote",
+            "active": true,
+            "elevation": "Moderator",
+            "reminder_message": "Remember to guess with !vote h:mm:ss or a number!",
+            "response": "Starts a vote",
+            "help": "Starts a new voting session. You can start it with the time in seconds or hour, minutes and/or seconds, and you can give it a name for saving the votes and results in a csv file. !svote h:mm:ss file_name",
+            "reminder_time": 180
+        },
+        {
+            "name": "extend",
+            "active": true,
+            "elevation": "Moderator",
+            "reminder_message": "Extend the voting session",
+            "response": "Extends the voting session",
+            "help": "Extends the current voting session with the amount of time you supply it. !extend h:mm:ss",
+            "reminder_time": 0
+        },
+        {
+            "name": "evote",
+            "active": true,
+            "elevation": "Moderator",
+            "reminder_message": "Ends the voting session",
+            "response": "Ends the voting session",
+            "help": "Ends the current voting session",
+            "reminder_time": 0
+        },
+        {
+            "name": "result",
+            "active": true,
+            "elevation": "Moderator",
+            "reminder_message": "Displays the winners of the voting session",
+            "response": "Displays the winners of the voting session",
+            "help": "Displays the winners of the voting session. !result h:mm:ss or a number",
+            "reminder_time": 0
+        },
+        {
+            "name": "vote",
+            "active": true,
+            "elevation": "Viewer",
+            "reminder_message": "Votes on a time or number",
+            "response": "Votes on a time or number",
+            "help": "Votes on a time or number. !vote h:mm:ss or a number",
+            "reminder_time": 0
+        },
+        {
+            "name": "myvote",
+            "active": true,
+            "elevation": "Viewer",
+            "reminder_message": "Responds with the time or number you voted on",
+            "response": "Responds with the time or number you voted on",
+            "help": "Responds with the time or number you voted on",
+            "reminder_time": 0
+        },
+        {
+            "name": "help",
+            "active": true,
+            "elevation": "Viewer",
+            "reminder_message": "Returns all commands available or instructions for a single command.",
+            "response": "Returns all commands available or instructions for a single command.",
+            "help": "Returns all commands available or instructions for a single command. !help or !help command",
+            "reminder_time": 0
+        }
+    ]
+}

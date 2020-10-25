@@ -1,4 +1,4 @@
-use fs::File;
+use serde::{Serialize, Deserialize};
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -32,7 +32,7 @@ pub struct Reply {
     pub text: String,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum Elevation {
     Broadcaster,
     Moderator,
