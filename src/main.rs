@@ -44,14 +44,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         String::from("Many SkopsGasm"),
         0,
     );
-    let bee = ChatCommand::new(
-        String::from("bee"),
-        Elevation::Viewer,
-        String::from("Thex will do fridge % in ∞ days"),
-        Box::new(|_user, _text| String::from("Thex will do fridge % in ∞ days")),
-        String::from("Gives random bee facts"),
-        0,
-    );
     let vote = ChatCommand::new(
         String::from("vote"),
         Elevation::Viewer,
@@ -150,7 +142,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     commands.add_command(evote, String::from(bot.command_symbol.as_str()));
     commands.add_command(result, String::from(bot.command_symbol.as_str()));
     commands.add_command(help, String::from(bot.command_symbol.as_str()));
-    commands.add_command(bee, String::from(bot.command_symbol.as_str()));
     commands.add_command(specs, String::from(bot.command_symbol.as_str()));
     commands.add_command(arttles, String::from(bot.command_symbol.as_str()));
     let w = bot.start_bot(commands, emotes);

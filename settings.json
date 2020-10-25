@@ -1,3 +1,10 @@
 {
-    "channel": "bot_ara"
+    "channel": "bot_ara",
+    "command-prefix": "!",
+    "message-delay": "Viewer",
+    "winner-message": "placeholder winner message",
+    "perfect-guess-message": "placeholder perfect guess",
+    "number-of-results shown": "3",
+    "vote-save-location": "./results/",
+    "command-location": "./commands.json"
 }
