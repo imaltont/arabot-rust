@@ -66,23 +66,14 @@ impl Arabot {
             message_wait: message_wait,
         }
     }
-    //    pub fn from (old_bot: &Arabot) -> Arabot {
-    //        let name = String::from(&old_bot.name);
-    //        let oauth = String::from(&old_bot.oauth);
-    //        let command_symbol = String::from(&old_bot.command_symbol);
-    //        let message_wait = old_bot.message_wait;
-    //        let mut m: Vec<ChatMessage> = Vec::new();
-    //        let mut a: Vec<Reply> = Vec::new();
-    //        let tc = String::from(&old_bot.twitch_channel);
-    //        Arabot{name: name, oauth: oauth, twitch_channel: tc, incoming_queue: m, answer_queue: a, command_symbol: String::from(command_symbol), message_wait: message_wait}
-    //    }
     pub async fn start_bot(
         &self,
         commands: Box<CommandHash>,
         emote_list: Vec<String>,
         num_winners: usize,
         winner_message: String,
-        perfect_guess_message: String
+        perfect_guess_message: String,
+        location_path: String
     ) -> Result<(), Error> {
         let mut commands = Box::new(commands);
         let ongoing_votes: HashMap<String, VoteObj> = HashMap::new();
@@ -185,7 +176,7 @@ impl Arabot {
                                 ));
                                 let mut location = String::from("");
                                 if regex_collection.file_regex.is_match(&cmd.text) {
-                                    location = String::from(
+                                    location = format!("{}{}", location_path, String::from(
                                         regex_collection
                                             .file_regex
                                             .captures(&cmd.text)
@@ -193,7 +184,7 @@ impl Arabot {
                                             .get(1)
                                             .unwrap()
                                             .as_str(),
-                                    );
+                                    ));
                                 }
                                 let rs_clone = rs.clone();
                                 votes = VoteObj::new(time, location);

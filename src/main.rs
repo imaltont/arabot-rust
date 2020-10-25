@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         commands.add_command(com, String::from(bot.command_symbol.as_str()));
     }
 
-    let w = bot.start_bot(commands, settings.slots_emotes, settings.number_of_results_shown, settings.winner_message, settings.perfect_guess_message);
+    let w = bot.start_bot(commands, settings.slots_emotes, settings.number_of_results_shown, settings.winner_message, settings.perfect_guess_message, settings.vote_save_location);
     w.await.unwrap();
     Ok(())
 }
