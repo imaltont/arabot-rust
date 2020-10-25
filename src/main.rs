@@ -5,21 +5,20 @@ use serde::{Deserialize, Serialize};
 //use serde_json::Result;
 
 use std::fs::{self};
-use std::{path::Path};
+use std::path::Path;
 
 use arabot::arabot::message::{ChatCommand, Elevation};
 use arabot::arabot::{Arabot, CommandHash};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-
     let settings = read_settings();
 
     let command_list = read_commands(&settings.command_location);
 
-    let delay: u64 = match settings.message_delay{
+    let delay: u64 = match settings.message_delay {
         Elevation::Moderator => 300,
-        _default => 1500
+        _default => 1500,
     };
 
     let bot = Arabot::new(
@@ -27,11 +26,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         (&config::CONFIG.oauth).to_string(),
         settings.channel,
         settings.command_prefix,
-        delay
+        delay,
     );
 
     //Runtime::new().expect("Error").block_on(bot.start_bot());
-    
+
     let mut commands = Box::new(CommandHash::new());
 
     for command in command_list {
@@ -42,12 +41,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             command.reminder_message.clone(),
             Box::new(move |_user, _text| response.to_owned()),
             command.help.clone(),
-            command.reminder_time
+            command.reminder_time,
         );
         commands.add_command(com, String::from(bot.command_symbol.as_str()));
     }
 
-    let w = bot.start_bot(commands, settings.slots_emotes, settings.number_of_results_shown, settings.winner_message, settings.perfect_guess_message, settings.vote_save_location);
+    let w = bot.start_bot(
+        commands,
+        settings.slots_emotes,
+        settings.number_of_results_shown,
+        settings.winner_message,
+        settings.perfect_guess_message,
+        settings.vote_save_location,
+    );
     w.await.unwrap();
     Ok(())
 }
@@ -66,10 +72,10 @@ struct Settings {
 }
 #[derive(Serialize, Deserialize)]
 struct Commands {
-    commands: Vec<Command>
+    commands: Vec<Command>,
 }
 #[derive(Serialize, Deserialize)]
-struct  Command{
+struct Command {
     name: String,
     active: bool,
     elevation: Elevation,

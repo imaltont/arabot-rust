@@ -11,7 +11,7 @@ use rand::prelude::*;
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::mpsc::channel;
-use std::sync::{Arc};
+use std::sync::Arc;
 use std::{cmp, convert::TryInto};
 
 pub struct CommandHash {
@@ -73,7 +73,7 @@ impl Arabot {
         num_winners: usize,
         winner_message: String,
         perfect_guess_message: String,
-        location_path: String
+        location_path: String,
     ) -> Result<(), Error> {
         let mut commands = Box::new(commands);
         let ongoing_votes: HashMap<String, VoteObj> = HashMap::new();
@@ -136,13 +136,16 @@ impl Arabot {
                     let repeat_interval = command.repeat_interval;
                     let repeat_message = command.response_message.clone();
                     let repeat_channel_clone = repeat_channel.clone();
-                    if !command.command.contains("svote"){
+                    if !command.command.contains("svote") {
                         let rs_clone = rs.clone();
-                        let _ = thread::spawn(move || {
-                            loop {
-                                rs_clone.send((format!("{}", repeat_message), repeat_channel_clone.to_owned())).unwrap();
-                                thread::sleep(time::Duration::from_secs(repeat_interval));
-                            }
+                        let _ = thread::spawn(move || loop {
+                            rs_clone
+                                .send((
+                                    format!("{}", repeat_message),
+                                    repeat_channel_clone.to_owned(),
+                                ))
+                                .unwrap();
+                            thread::sleep(time::Duration::from_secs(repeat_interval));
                         });
                     }
                 }
@@ -176,29 +179,42 @@ impl Arabot {
                                 ));
                                 let mut location = String::from("");
                                 if regex_collection.file_regex.is_match(&cmd.text) {
-                                    location = format!("{}{}", location_path, String::from(
-                                        regex_collection
-                                            .file_regex
-                                            .captures(&cmd.text)
-                                            .unwrap()
-                                            .get(1)
-                                            .unwrap()
-                                            .as_str(),
-                                    ));
+                                    location = format!(
+                                        "{}{}",
+                                        location_path,
+                                        String::from(
+                                            regex_collection
+                                                .file_regex
+                                                .captures(&cmd.text)
+                                                .unwrap()
+                                                .get(1)
+                                                .unwrap()
+                                                .as_str(),
+                                        )
+                                    );
                                 }
                                 let rs_clone = rs.clone();
                                 votes = VoteObj::new(time, location);
                                 let votes_clone = Arc::clone(&votes);
-                                let repeat_message = commands.commands.get_mut(command).unwrap().response_message.clone();
+                                let repeat_message = commands
+                                    .commands
+                                    .get_mut(command)
+                                    .unwrap()
+                                    .response_message
+                                    .clone();
                                 let repeat_channel_clone = repeat_channel.clone();
-                                let repeat_interval = commands.commands.get_mut(command).unwrap().repeat_interval;
-                                let _ = thread::spawn(move || {
-                                    loop {
-                                        if *votes_clone.has_started.lock().unwrap(){
-                                            rs_clone.send((format!("{}", repeat_message), repeat_channel_clone.to_owned())).unwrap();
-                                        }
-                                        thread::sleep(time::Duration::from_secs(repeat_interval));
+                                let repeat_interval =
+                                    commands.commands.get_mut(command).unwrap().repeat_interval;
+                                let _ = thread::spawn(move || loop {
+                                    if *votes_clone.has_started.lock().unwrap() {
+                                        rs_clone
+                                            .send((
+                                                format!("{}", repeat_message),
+                                                repeat_channel_clone.to_owned(),
+                                            ))
+                                            .unwrap();
                                     }
+                                    thread::sleep(time::Duration::from_secs(repeat_interval));
                                 });
                                 let votes_clone = Arc::clone(&votes);
                                 let rs_clone = rs.clone();
@@ -269,13 +285,24 @@ impl Arabot {
                         "result" => {
                             //TODO: replace 3 with variable from config file.
                             if regex_collection.time_regex.is_match(&cmd.text) {
-                                let winning_time = convert_string_int(&regex_collection.time_regex.find(&cmd.text).unwrap().as_str().to_string());
-                                let num_show = cmp::min(votes.times.lock().unwrap().len(), num_winners);
+                                let winning_time = convert_string_int(
+                                    &regex_collection
+                                        .time_regex
+                                        .find(&cmd.text)
+                                        .unwrap()
+                                        .as_str()
+                                        .to_string(),
+                                );
+                                let num_show =
+                                    cmp::min(votes.times.lock().unwrap().len(), num_winners);
                                 let mut time_vector: Vec<(u64, String, String)> = Vec::new();
 
                                 for (username, time) in &*votes.times.lock().unwrap() {
-                                    time_vector
-                                        .push((convert_string_int(time)-winning_time, String::from(time), String::from(username)));
+                                    time_vector.push((
+                                        convert_string_int(time) - winning_time,
+                                        String::from(time),
+                                        String::from(username),
+                                    ));
                                 }
                                 if time_vector.len() == 0 {
                                     continue;

@@ -1,5 +1,5 @@
-use serde::{Serialize, Deserialize};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::{fs, path::Path};
