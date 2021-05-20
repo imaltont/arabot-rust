@@ -148,10 +148,10 @@ impl VoteRegex {
         let help_regex = regex::Regex::new(r"(?:help )(\w+\b)").unwrap();
 
         VoteRegex {
-            time_regex: time_regex,
-            file_regex: file_regex,
-            vote_regex: vote_regex,
-            help_regex: help_regex,
+            time_regex,
+            file_regex,
+            vote_regex,
+            help_regex,
         }
     }
 }

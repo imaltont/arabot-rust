@@ -76,7 +76,7 @@ impl Arabot {
         location_path: String,
     ) -> Result<(), Error> {
         let mut commands = Box::new(commands);
-        let ongoing_votes: HashMap<String, VoteObj> = HashMap::new();
+        //let ongoing_votes: HashMap<String, VoteObj> = HashMap::new();
         let regex_collection = VoteRegex::new();
         let irc_client_config = client::data::config::Config {
             nickname: Some(String::from(&self.name)),
@@ -151,8 +151,7 @@ impl Arabot {
                 }
             }
 
-            let mut command_reg = Regex::new(r"").unwrap();
-            command_reg = Arabot::generate_regex(&commands.commands, &cloned_arabot_symbol);
+            let command_reg = Arabot::generate_regex(&commands.commands, &cloned_arabot_symbol);
 
             let mut votes = VoteObj::new(0, String::from(""));
             loop {
@@ -161,334 +160,376 @@ impl Arabot {
                 if command_reg.is_match(&cmd.text.trim()) {
                     let command = command_reg.find(&cmd.text.trim()).unwrap().as_str();
                     //TODO: svote, evote, extend, remember, vote, add command
-                    match &command[1..] {
-                        //special commands are placed in their own patterns in the match, while "regular" commands all go into default.
-                        "hello" => rs
-                            .send((format!("Hello, {}", cmd.user), cmd.channel))
+                    //TODO: update case to always convert to lower case
+                    match (
+                        commands.commands.get_mut(command).unwrap().elevation,
+                        cmd.roles,
+                    ) {
+                        (Elevation::Broadcaster, Elevation::Moderator)
+                        | (Elevation::Broadcaster, Elevation::Viewer)
+                        | (Elevation::Moderator, Elevation::Viewer) => rs
+                            .send((
+                                format!(
+                                    "You do not have permission to use this command @{}",
+                                    cmd.user
+                                ),
+                                cmd.channel,
+                            ))
                             .unwrap(),
-                        "svote" => {
-                            if !*votes.has_started.lock().unwrap()
-                                && regex_collection.time_regex.is_match(&cmd.text)
-                            {
-                                let time = convert_string_int(&String::from(
-                                    regex_collection
-                                        .time_regex
-                                        .find(&cmd.text)
-                                        .unwrap()
-                                        .as_str(),
-                                ));
-                                let mut location = String::from("");
-                                if regex_collection.file_regex.is_match(&cmd.text) {
-                                    location = format!(
-                                        "{}{}",
-                                        location_path,
-                                        String::from(
+                        _ => {
+                            match &command[1..] {
+                                //special commands are placed in their own patterns in the match, while "regular" commands all go into default.
+                                "hello" => rs
+                                    .send((format!("Hello, {}", cmd.user), cmd.channel))
+                                    .unwrap(),
+                                "svote" => {
+                                    if !*votes.has_started.lock().unwrap()
+                                        && regex_collection.time_regex.is_match(&cmd.text)
+                                    {
+                                        let time = convert_string_int(&String::from(
                                             regex_collection
-                                                .file_regex
+                                                .time_regex
+                                                .find(&cmd.text)
+                                                .unwrap()
+                                                .as_str(),
+                                        ));
+                                        let mut location = String::from("");
+                                        if regex_collection.file_regex.is_match(&cmd.text) {
+                                            location = format!(
+                                                "{}{}",
+                                                location_path,
+                                                String::from(
+                                                    regex_collection
+                                                        .file_regex
+                                                        .captures(&cmd.text)
+                                                        .unwrap()
+                                                        .get(1)
+                                                        .unwrap()
+                                                        .as_str(),
+                                                )
+                                            );
+                                        }
+                                        let rs_clone = rs.clone();
+                                        votes = VoteObj::new(time, location);
+                                        let votes_clone = Arc::clone(&votes);
+                                        let repeat_message = commands
+                                            .commands
+                                            .get_mut(command)
+                                            .unwrap()
+                                            .response_message
+                                            .clone();
+                                        let repeat_channel_clone = repeat_channel.clone();
+                                        let repeat_interval = commands
+                                            .commands
+                                            .get_mut(command)
+                                            .unwrap()
+                                            .repeat_interval;
+                                        let _ = thread::spawn(move || loop {
+                                            if *votes_clone.has_started.lock().unwrap() {
+                                                rs_clone
+                                                    .send((
+                                                        format!("{}", repeat_message),
+                                                        repeat_channel_clone.to_owned(),
+                                                    ))
+                                                    .unwrap();
+                                            }
+                                            thread::sleep(time::Duration::from_secs(
+                                                repeat_interval,
+                                            ));
+                                        });
+                                        let votes_clone = Arc::clone(&votes);
+                                        let rs_clone = rs.clone();
+                                        *votes.active_thread.lock().unwrap() =
+                                            thread::spawn(move || {
+                                                rs_clone
+                                                    .send((
+                                                        String::from("Voting session started!"),
+                                                        String::from(cmd.channel.as_str()),
+                                                    ))
+                                                    .unwrap();
+                                                VoteObj::start_vote(votes_clone);
+                                                rs_clone
+                                                    .send((
+                                                        String::from("Voting session ended!"),
+                                                        String::from(cmd.channel.as_str()),
+                                                    ))
+                                                    .unwrap();
+                                            });
+                                    }
+                                }
+                                "evote" => {
+                                    while *votes.has_started.lock().unwrap() {
+                                        votes.active_thread.lock().unwrap().thread().unpark();
+                                    }
+                                }
+                                "extend" => {
+                                    if regex_collection.time_regex.is_match(&cmd.text) {
+                                        let response: &str;
+                                        votes.time_left.lock().unwrap().push(convert_string_int(
+                                            &String::from(
+                                                regex_collection
+                                                    .time_regex
+                                                    .find(&cmd.text)
+                                                    .unwrap()
+                                                    .as_str(),
+                                            ),
+                                        ));
+                                        if !*votes.has_started.lock().unwrap() {
+                                            response = "The voting session has been reopened!";
+                                            let votes_clone = Arc::clone(&votes);
+                                            let rs_clone = rs.clone();
+                                            rs.send((
+                                                String::from(response),
+                                                String::from(cmd.channel.as_str()),
+                                            ))
+                                            .unwrap();
+                                            *votes.active_thread.lock().unwrap() =
+                                                thread::spawn(move || {
+                                                    VoteObj::start_vote(votes_clone);
+                                                    rs_clone
+                                                        .send((
+                                                            String::from("Voting session ended!"),
+                                                            String::from(cmd.channel.as_str()),
+                                                        ))
+                                                        .unwrap();
+                                                });
+                                        } else {
+                                            response = "The voting session has been extended!";
+                                            rs.send((
+                                                String::from(response),
+                                                String::from(cmd.channel.as_str()),
+                                            ))
+                                            .unwrap();
+                                        }
+                                    }
+                                }
+                                "remember" => {}
+                                "result" => {
+                                    //TODO: replace 3 with variable from config file.
+                                    if regex_collection.time_regex.is_match(&cmd.text) {
+                                        let winning_time = convert_string_int(
+                                            &regex_collection
+                                                .time_regex
+                                                .find(&cmd.text)
+                                                .unwrap()
+                                                .as_str()
+                                                .to_string(),
+                                        );
+                                        let num_show = cmp::min(
+                                            votes.times.lock().unwrap().len(),
+                                            num_winners,
+                                        );
+                                        let mut time_vector: Vec<(i64, String, String)> =
+                                            Vec::new();
+
+                                        for (username, time) in &*votes.times.lock().unwrap() {
+                                            time_vector.push((
+                                                convert_string_int(time) - winning_time,
+                                                String::from(time),
+                                                String::from(username),
+                                            ));
+                                        }
+                                        if time_vector.len() == 0 {
+                                            continue;
+                                        }
+
+                                        time_vector.sort_by_key(|time| time.0.abs());
+                                        let winning_message = if time_vector[0].0 == 0 {
+                                            perfect_guess_message.clone()
+                                        } else {
+                                            winner_message.clone()
+                                        };
+                                        rs.send((
+                                            format!("{} {}", time_vector[0].2, winning_message),
+                                            String::from(cmd.channel.as_str()),
+                                        ))
+                                        .unwrap();
+
+                                        for i in 0..num_show {
+                                            rs.send((
+                                                format!(
+                                                    "{}) {} {}",
+                                                    i + 1,
+                                                    time_vector[i].2,
+                                                    time_vector[i].1
+                                                ),
+                                                String::from(cmd.channel.as_str()),
+                                            ))
+                                            .unwrap();
+                                        }
+                                    }
+                                }
+                                "myvote" => {
+                                    if votes.times.lock().unwrap().contains_key(&cmd.user) {
+                                        rs.send((
+                                            format!(
+                                                "{} voted on {}",
+                                                &cmd.user,
+                                                String::from(
+                                                    &votes.times.lock().unwrap()[&cmd.user]
+                                                )
+                                            ),
+                                            String::from(cmd.channel.as_str()),
+                                        ))
+                                        .unwrap();
+                                    } else {
+                                        rs.send((
+                                            format!(
+                                                "{}, you have not voted in this session",
+                                                &cmd.user
+                                            ),
+                                            String::from(cmd.channel.as_str()),
+                                        ))
+                                        .unwrap();
+                                    }
+                                }
+                                "add" => {} //for adding new commands
+                                "vote" => {
+                                    //TODO: add the use of the hashmap with votes
+                                    //TODO: add regex to recognize where to put the vote
+                                    //votes.has_started = true; //TODO: remove, only here for testing purposes
+                                    if *votes.has_started.lock().unwrap() {
+                                        if regex_collection.time_regex.is_match(&cmd.text) {
+                                            let time = regex_collection
+                                                .time_regex
+                                                .find(&cmd.text)
+                                                .unwrap()
+                                                .as_str();
+                                            votes.add_vote(
+                                                String::from(cmd.user.as_str()),
+                                                String::from(time.trim()),
+                                            );
+                                            rs.send((
+                                                format!("{} voted on {}", cmd.user, time),
+                                                cmd.channel,
+                                            ))
+                                            .unwrap();
+                                        } else {
+                                            rs.send((
+                                                format!(
+                                                    "@{} {}",
+                                                    cmd.user,
+                                                    commands
+                                                        .commands
+                                                        .get_mut(command)
+                                                        .unwrap()
+                                                        .help
+                                                ),
+                                                cmd.channel,
+                                            ))
+                                            .unwrap();
+                                        }
+                                    } else {
+                                        rs.send((
+                                            format!(
+                                                "@{} there is currently no active voting session",
+                                                cmd.user
+                                            ),
+                                            cmd.channel,
+                                        ))
+                                        .unwrap()
+                                    }
+                                }
+                                "help" => {
+                                    if !regex_collection.help_regex.is_match(&cmd.text) {
+                                        let mut viewer_commands = String::from("Normal commands: ");
+                                        let mut moderator_commands =
+                                            String::from("Moderator only commands: ");
+                                        let mut broadcaster_commands =
+                                            String::from("Broadcaster only commands: ");
+
+                                        for (k, c) in &commands.commands {
+                                            match c.elevation {
+                                                Elevation::Viewer => viewer_commands
+                                                    .push_str(&format!("{}, ", &k[1..])),
+                                                Elevation::Moderator => moderator_commands
+                                                    .push_str(&format!("{}, ", &k[1..])),
+                                                Elevation::Broadcaster => broadcaster_commands
+                                                    .push_str(&format!("{}, ", &k[1..])),
+                                            }
+                                        }
+                                        rs.send((
+                                            format!(
+                                                "{} {} {} ",
+                                                viewer_commands,
+                                                moderator_commands,
+                                                broadcaster_commands
+                                            ),
+                                            cmd.channel,
+                                        ))
+                                        .unwrap();
+                                    } else {
+                                        let help_command = format!(
+                                            "{}{}",
+                                            &cloned_arabot_symbol,
+                                            regex_collection
+                                                .help_regex
                                                 .captures(&cmd.text)
                                                 .unwrap()
                                                 .get(1)
                                                 .unwrap()
-                                                .as_str(),
-                                        )
-                                    );
-                                }
-                                let rs_clone = rs.clone();
-                                votes = VoteObj::new(time, location);
-                                let votes_clone = Arc::clone(&votes);
-                                let repeat_message = commands
-                                    .commands
-                                    .get_mut(command)
-                                    .unwrap()
-                                    .response_message
-                                    .clone();
-                                let repeat_channel_clone = repeat_channel.clone();
-                                let repeat_interval =
-                                    commands.commands.get_mut(command).unwrap().repeat_interval;
-                                let _ = thread::spawn(move || loop {
-                                    if *votes_clone.has_started.lock().unwrap() {
-                                        rs_clone
-                                            .send((
-                                                format!("{}", repeat_message),
-                                                repeat_channel_clone.to_owned(),
+                                                .as_str()
+                                        );
+                                        if command_reg.is_match(&help_command) {
+                                            rs.send((
+                                                format!(
+                                                    "{}",
+                                                    commands
+                                                        .commands
+                                                        .get_mut(help_command.as_str())
+                                                        .unwrap()
+                                                        .help
+                                                ),
+                                                cmd.channel,
                                             ))
                                             .unwrap();
-                                    }
-                                    thread::sleep(time::Duration::from_secs(repeat_interval));
-                                });
-                                let votes_clone = Arc::clone(&votes);
-                                let rs_clone = rs.clone();
-                                *votes.active_thread.lock().unwrap() = thread::spawn(move || {
-                                    rs_clone
-                                        .send((
-                                            String::from("Voting session started!"),
-                                            String::from(cmd.channel.as_str()),
-                                        ))
-                                        .unwrap();
-                                    VoteObj::start_vote(votes_clone);
-                                    rs_clone
-                                        .send((
-                                            String::from("Voting session ended!"),
-                                            String::from(cmd.channel.as_str()),
-                                        ))
-                                        .unwrap();
-                                });
-                            }
-                        }
-                        "evote" => {
-                            while *votes.has_started.lock().unwrap() {
-                                votes.active_thread.lock().unwrap().thread().unpark();
-                            }
-                        }
-                        "extend" => {
-                            if regex_collection.time_regex.is_match(&cmd.text) {
-                                let mut response = "";
-                                votes.time_left.lock().unwrap().push(convert_string_int(
-                                    &String::from(
-                                        regex_collection
-                                            .time_regex
-                                            .find(&cmd.text)
-                                            .unwrap()
-                                            .as_str(),
-                                    ),
-                                ));
-                                if !*votes.has_started.lock().unwrap() {
-                                    response = "The voting session has been reopened!";
-                                    let votes_clone = Arc::clone(&votes);
-                                    let rs_clone = rs.clone();
-                                    rs.send((
-                                        String::from(response),
-                                        String::from(cmd.channel.as_str()),
-                                    ))
-                                    .unwrap();
-                                    *votes.active_thread.lock().unwrap() =
-                                        thread::spawn(move || {
-                                            VoteObj::start_vote(votes_clone);
-                                            rs_clone
-                                                .send((
-                                                    String::from("Voting session ended!"),
-                                                    String::from(cmd.channel.as_str()),
-                                                ))
-                                                .unwrap();
-                                        });
-                                } else {
-                                    response = "The voting session has been extended!";
-                                    rs.send((
-                                        String::from(response),
-                                        String::from(cmd.channel.as_str()),
-                                    ))
-                                    .unwrap();
-                                }
-                            }
-                        }
-                        "remember" => {}
-                        "result" => {
-                            //TODO: replace 3 with variable from config file.
-                            if regex_collection.time_regex.is_match(&cmd.text) {
-                                let winning_time = convert_string_int(
-                                    &regex_collection
-                                        .time_regex
-                                        .find(&cmd.text)
-                                        .unwrap()
-                                        .as_str()
-                                        .to_string(),
-                                );
-                                let num_show =
-                                    cmp::min(votes.times.lock().unwrap().len(), num_winners);
-                                let mut time_vector: Vec<(i64, String, String)> = Vec::new();
-
-                                for (username, time) in &*votes.times.lock().unwrap() {
-                                    time_vector.push((
-                                        convert_string_int(time) - winning_time,
-                                        String::from(time),
-                                        String::from(username),
-                                    ));
-                                }
-                                if time_vector.len() == 0 {
-                                    continue;
-                                }
-
-                                time_vector.sort_by_key(|time| time.0.abs());
-                                let winning_message = if time_vector[0].0 == 0 {
-                                    perfect_guess_message.clone()
-                                } else {
-                                    winner_message.clone()
-                                };
-                                rs.send((
-                                    format!("{} {}", time_vector[0].2, winning_message),
-                                    String::from(cmd.channel.as_str()),
-                                ))
-                                .unwrap();
-
-                                for i in 0..num_show {
-                                    rs.send((
-                                        format!(
-                                            "{}) {} {}",
-                                            i + 1,
-                                            time_vector[i].2,
-                                            time_vector[i].1
-                                        ),
-                                        String::from(cmd.channel.as_str()),
-                                    ))
-                                    .unwrap();
-                                }
-                            }
-                        }
-                        "myvote" => {
-                            if votes.times.lock().unwrap().contains_key(&cmd.user) {
-                                rs.send((
-                                    format!(
-                                        "{} voted on {}",
-                                        &cmd.user,
-                                        String::from(&votes.times.lock().unwrap()[&cmd.user])
-                                    ),
-                                    String::from(cmd.channel.as_str()),
-                                ))
-                                .unwrap();
-                            } else {
-                                rs.send((
-                                    format!("{}, you have not voted in this session", &cmd.user),
-                                    String::from(cmd.channel.as_str()),
-                                ))
-                                .unwrap();
-                            }
-                        }
-                        "add" => {} //for adding new commands
-                        "vote" => {
-                            //TODO: add the use of the hashmap with votes
-                            //TODO: add regex to recognize where to put the vote
-                            //votes.has_started = true; //TODO: remove, only here for testing purposes
-                            if *votes.has_started.lock().unwrap() {
-                                if regex_collection.time_regex.is_match(&cmd.text) {
-                                    let time = regex_collection
-                                        .time_regex
-                                        .find(&cmd.text)
-                                        .unwrap()
-                                        .as_str();
-                                    votes.add_vote(
-                                        String::from(cmd.user.as_str()),
-                                        String::from(time.trim()),
-                                    );
-                                    rs.send((
-                                        format!("{} voted on {}", cmd.user, time),
-                                        cmd.channel,
-                                    ))
-                                    .unwrap();
-                                } else {
-                                    rs.send((
-                                        format!(
-                                            "@{} {}",
-                                            cmd.user,
-                                            commands.commands.get_mut(command).unwrap().help
-                                        ),
-                                        cmd.channel,
-                                    ))
-                                    .unwrap();
-                                }
-                            } else {
-                                rs.send((
-                                    format!(
-                                        "@{} there is currently no active voting session",
-                                        cmd.user
-                                    ),
-                                    cmd.channel,
-                                ))
-                                .unwrap()
-                            }
-                        }
-                        "help" => {
-                            if !regex_collection.help_regex.is_match(&cmd.text) {
-                                let mut viewer_commands = String::from("Normal commands: ");
-                                let mut moderator_commands =
-                                    String::from("Moderator only commands: ");
-                                let mut broadcaster_commands =
-                                    String::from("Broadcaster only commands: ");
-
-                                for (k, c) in &commands.commands {
-                                    match c.elevation {
-                                        Elevation::Viewer => {
-                                            viewer_commands.push_str(&format!("{}, ", &k[1..]))
-                                        }
-                                        Elevation::Moderator => {
-                                            moderator_commands.push_str(&format!("{}, ", &k[1..]))
-                                        }
-                                        Elevation::Broadcaster => {
-                                            broadcaster_commands.push_str(&format!("{}, ", &k[1..]))
                                         }
                                     }
                                 }
-                                rs.send((
-                                    format!(
-                                        "{} {} {} ",
-                                        viewer_commands, moderator_commands, broadcaster_commands
-                                    ),
-                                    cmd.channel,
-                                ))
-                                .unwrap();
-                            } else {
-                                let help_command = format!(
-                                    "{}{}",
-                                    &cloned_arabot_symbol,
-                                    regex_collection
-                                        .help_regex
-                                        .captures(&cmd.text)
-                                        .unwrap()
-                                        .get(1)
-                                        .unwrap()
-                                        .as_str()
-                                );
-                                if command_reg.is_match(&help_command) {
-                                    rs.send((
+                                "slots" => {
+                                    let emote1 =
+                                        emote_list.choose(&mut rand::thread_rng()).unwrap();
+                                    let emote2 =
+                                        emote_list.choose(&mut rand::thread_rng()).unwrap();
+                                    let emote3 =
+                                        emote_list.choose(&mut rand::thread_rng()).unwrap();
+
+                                    if emote1.as_str() == emote2.as_str()
+                                        && emote2.as_str() == emote3.as_str()
+                                    {
+                                        rs.send((
+                                            format!(
+                                                "{} {} {} JACKPOT @{}",
+                                                emote1, emote2, emote3, cmd.user
+                                            ),
+                                            cmd.channel,
+                                        ))
+                                        .unwrap();
+                                    } else {
+                                        rs.send((
+                                            format!(
+                                                "{} {} {} @{}",
+                                                emote1, emote2, emote3, cmd.user
+                                            ),
+                                            cmd.channel,
+                                        ))
+                                        .unwrap();
+                                    }
+                                }
+                                _ => rs
+                                    .send((
                                         format!(
                                             "{}",
-                                            commands
-                                                .commands
-                                                .get_mut(help_command.as_str())
-                                                .unwrap()
-                                                .help
+                                            (commands.commands.get_mut(command).unwrap().response)(
+                                                String::from(&cmd.user),
+                                                cmd.text
+                                            )
                                         ),
-                                        cmd.channel,
+                                        String::from(&cmd.channel),
                                     ))
-                                    .unwrap();
-                                }
+                                    .unwrap(), //rs.send((format!("Error occured: No command found"), cmd.channel)).unwrap(),
                             }
                         }
-                        "slots" => {
-                            let emote1 = emote_list.choose(&mut rand::thread_rng()).unwrap();
-                            let emote2 = emote_list.choose(&mut rand::thread_rng()).unwrap();
-                            let emote3 = emote_list.choose(&mut rand::thread_rng()).unwrap();
-
-                            if emote1.as_str() == emote2.as_str()
-                                && emote2.as_str() == emote3.as_str()
-                            {
-                                rs.send((
-                                    format!(
-                                        "{} {} {} JACKPOT @{}",
-                                        emote1, emote2, emote3, cmd.user
-                                    ),
-                                    cmd.channel,
-                                ))
-                                .unwrap();
-                            } else {
-                                rs.send((
-                                    format!("{} {} {} @{}", emote1, emote2, emote3, cmd.user),
-                                    cmd.channel,
-                                ))
-                                .unwrap();
-                            }
-                        }
-                        _default => rs
-                            .send((
-                                format!(
-                                    "{}",
-                                    (commands.commands.get_mut(command).unwrap().response)(
-                                        String::from(&cmd.user),
-                                        cmd.text
-                                    )
-                                ),
-                                String::from(&cmd.channel),
-                            ))
-                            .unwrap(), //rs.send((format!("Error occured: No command found"), cmd.channel)).unwrap(),
                     }
                 }
                 //if cmd.text.contains("!hello"){
