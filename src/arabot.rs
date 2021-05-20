@@ -21,7 +21,7 @@ pub struct CommandHash {
 impl CommandHash {
     pub fn new() -> CommandHash {
         let commands = HashMap::<String, ChatCommand>::new();
-        CommandHash { commands: commands }
+        CommandHash { commands }
     }
     pub fn add_command(&mut self, new_command: ChatCommand, command_symbol: String) {
         //self.commands.get_mut().unwrap().insert(format!("{}{}", command_symbol, new_command.command), new_command);
@@ -57,13 +57,13 @@ impl Arabot {
         let mut hash = String::from("#");
         hash.push_str(&tc);
         Arabot {
-            name: name,
-            oauth: oauth,
+            name,
+            oauth,
             twitch_channel: String::from(hash),
             incoming_queue: m,
             answer_queue: a,
             command_symbol: String::from(command_symbol),
-            message_wait: message_wait,
+            message_wait,
         }
     }
     pub async fn start_bot(
