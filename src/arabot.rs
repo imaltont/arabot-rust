@@ -14,6 +14,8 @@ use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::{cmp, convert::TryInto};
 
+use crate::arabot::message::CommandType;
+
 pub struct CommandHash {
     pub commands: HashMap<String, ChatCommand>,
 }
@@ -516,18 +518,43 @@ impl Arabot {
                                         .unwrap();
                                     }
                                 }
-                                _ => rs
-                                    .send((
-                                        format!(
-                                            "{}",
-                                            (commands.commands.get_mut(command).unwrap().response)(
-                                                String::from(&cmd.user),
-                                                cmd.text
-                                            )
+                                _ =>
+				{
+				    let message: String = match commands.commands.get_mut(command).unwrap().command_type {
+					CommandType::Normal => (commands.commands.get_mut(command).unwrap().response)(
+                                            String::from(&cmd.user),
+                                            String::from(&cmd.text)
                                         ),
-                                        String::from(&cmd.channel),
-                                    ))
-                                    .unwrap(), //rs.send((format!("Error occured: No command found"), cmd.channel)).unwrap(),
+					CommandType::Slots => {
+					    let mut emotes: Vec<String> = Vec::new();
+					    let mut win = true;
+					    let mut prev_emote = "".to_string();
+					    for _ in 0..commands.commands.get_mut(command).unwrap().slots_amount {
+						let new_emote = emote_list.choose(&mut rand::thread_rng()).unwrap();
+						emotes.push(String::from(new_emote));
+						if prev_emote.as_str() == new_emote || prev_emote == "" {
+						    prev_emote = String::from(new_emote);
+						} else {
+						    win = false;
+						}
+					    }
+					    if win {
+						format!("{} JACKPOT @{}", emotes.join(" "), cmd.user)
+					    } else {
+						format!("{} @{}", emotes.join(" "), cmd.user)
+					    }
+					}
+				    };
+				    rs
+					.send((
+                                            format!(
+						"{}",
+						message
+                                            ),
+                                            String::from(&cmd.channel),
+					))
+					.unwrap() //rs.send((format!("Error occured: No command found"), cmd.channel)).unwrap(),
+				}
                             }
                         }
                     }

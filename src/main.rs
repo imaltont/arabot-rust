@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::{self};
 use std::path::Path;
 
-use arabot::arabot::message::{ChatCommand, Elevation};
+use arabot::arabot::message::{ChatCommand, Elevation, CommandType};
 use arabot::arabot::{Arabot, CommandHash};
 
 #[tokio::main]
@@ -42,6 +42,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Box::new(move |_user, _text| response.to_owned()),
             command.help.clone(),
             command.reminder_time,
+	    command.command_type,
+	    command.slots_amount
         );
         commands.add_command(com, String::from(bot.command_symbol.as_str()));
     }
@@ -83,6 +85,10 @@ struct Command {
     response: String,
     help: String,
     reminder_time: u64,
+    #[serde(default)]
+    command_type: CommandType,
+    #[serde(default)]
+    slots_amount: u64
 }
 fn read_settings() -> Settings {
     let path = Path::new("./settings/settings.json");

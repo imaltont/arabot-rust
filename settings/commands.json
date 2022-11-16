@@ -25,7 +25,9 @@
             "reminder_message": "Gamble nothing to see if you get a jackpot",
             "response": "Gamble nothing to see if you get a jackpot",
             "help": "Roll 3 random emotes and see if you get a jackpot",
-            "reminder_time": 0
+            "reminder_time": 0,
+	    "command_type" : "Slots",
+	    "slots_amount" : 3
         },
         {
             "name": "svote",

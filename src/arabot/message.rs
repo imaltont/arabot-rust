@@ -5,6 +5,13 @@ use std::sync::{Arc, Mutex};
 use std::{fs, path::Path};
 use std::{fs::OpenOptions, io::Write, thread, time};
 
+#[derive(Serialize, Deserialize, Default)]
+pub enum CommandType {
+    #[default]
+    Normal,
+    Slots
+}
+
 pub struct VoteObj {
     pub has_started: Mutex<bool>,
     pub time_left: Mutex<Vec<i64>>,
@@ -46,6 +53,8 @@ pub struct ChatCommand {
     pub response: Box<dyn FnMut(String, String) -> String>,
     pub help: String,
     pub repeat_interval: u64,
+    pub command_type: CommandType,
+    pub slots_amount: u64
 }
 
 unsafe impl Send for ChatCommand {}
@@ -59,6 +68,8 @@ impl ChatCommand {
         r: Box<dyn FnMut(String, String) -> String>,
         h: String,
         ri: u64,
+        ct: CommandType,
+        sa: u64,
     ) -> ChatCommand {
         ChatCommand {
             command: c,
@@ -67,6 +78,8 @@ impl ChatCommand {
             response: r,
             help: h,
             repeat_interval: ri,
+	    command_type: ct,
+	    slots_amount: sa
         }
     }
 }
